@@ -33,7 +33,7 @@ class CelebA(VisionDataset):
             root, transform=transform, target_transform=target_transform
         )
         self.base_folder = base_folder
-        self.target_type = [target_type]
+        self.target_type = target_type
         self.image_dir = "img_align_celeba_png" if use_png else "img_align_celeba"
 
         ext = "png" if use_png else "jpg"

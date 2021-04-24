@@ -19,4 +19,9 @@ class CelebADatasetTests(unittest.TestCase):
 
     def test_load_train(self):
         dataset = CelebA(self.root, "train")
-        raise NotImplementedError
+        assert dataset is not None
+        assert len(dataset) == 162484
+
+        for image, target in dataset:
+            assert image is not None
+            assert len(target) == 2
