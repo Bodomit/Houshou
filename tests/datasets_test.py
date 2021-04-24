@@ -1,5 +1,9 @@
+from houshou.datasets.datasets import AttributeDataset
 import os
 import unittest
+
+import torch
+from torch.utils.data.dataset import Dataset
 
 from houshou.datasets import CelebA
 
@@ -25,3 +29,26 @@ class CelebADatasetTests(unittest.TestCase):
         for image, target in dataset:
             assert image is not None
             assert len(target) == 2
+
+    def test_load_test(self):
+        dataset = CelebA(self.root, "test")
+        assert dataset is not None
+        assert len(dataset) == 19944
+
+        for image, target in dataset:
+            assert image is not None
+            assert len(target) == 2
+
+
+class AttributeDatasetTests(unittest.TestCase):
+    def setUp(self):
+        self.root = get_root_dir()
+
+    def test_celeba_train_male_attribute(self):
+        dataset: Dataset = CelebA(self.root, "train")
+        dataset = AttributeDataset(dataset, ["Male"])
+
+        for image, (identity, attributes) in dataset:
+            assert image is not None
+            assert identity.shape == torch.Size([])
+            assert attributes.shape == torch.Size([1])

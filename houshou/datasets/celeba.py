@@ -9,7 +9,6 @@ import pandas
 import PIL
 
 import torch
-from torch.utils.data.dataset import Dataset
 from torchvision.datasets.vision import VisionDataset
 from torchvision.datasets.utils import verify_str_arg
 
