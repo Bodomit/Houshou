@@ -7,8 +7,8 @@ dependencies:
   - pytorch::torchvision
   - cudatoolkit=11.1
   - pip
-  - mypy
   - pycodestyle
   - numpy
+  - pandas
   - pip:
     - black
