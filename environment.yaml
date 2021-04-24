@@ -1,0 +1,14 @@
+name: houshou
+channels:
+  - defaults
+dependencies:
+  - python=3.9
+  - pytorch::pytorch=1.8.1
+  - pytorch::torchvision
+  - cudatoolkit=11.1
+  - pip
+  - mypy
+  - pycodestyle
+  - numpy
+  - pip:
+    - black
