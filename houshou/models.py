@@ -64,6 +64,20 @@ class MultiTaskTrainingModel(nn.Module):
         return features, attribute
 
 
+class FullAttributeExtractionModel(MultiTaskTrainingModel):
+    def __init__(
+        self, feature_model: nn.Module = None, attribute_model: nn.Module = None
+    ):
+        super().__init__(
+            feature_model=feature_model,
+            attribute_model=attribute_model,
+            reverse_attribute_gradient=False,
+        )
+
+    def forward(self, x):
+        return super().forward(x)[1]
+
+
 class GradReverse(torch.autograd.Function):
     @staticmethod
     def forward(ctx, x):
