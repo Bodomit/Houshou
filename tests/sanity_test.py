@@ -11,7 +11,3 @@ class EnvironmentTests(unittest.TestCase):
         device = torch.device("cuda:0")
         assert device is not None
         assert torch.cuda.is_available()  # type: ignore
-
-
-if __name__ == "__main__":
-    unittest.main()
