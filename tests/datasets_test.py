@@ -1,4 +1,3 @@
-from houshou.datasets.datasets import AttributeDataset
 import os
 import unittest
 
@@ -6,6 +5,7 @@ import torch
 from torch.utils.data.dataset import Dataset
 
 from houshou.datasets import CelebA
+from houshou.datasets.datasets import AttributeDataset
 
 POSSIBLE_DATASET_ROOT_DIRS = ["/mnt/e/datasets"]
 
