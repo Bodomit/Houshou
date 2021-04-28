@@ -13,3 +13,4 @@ dependencies:
   - pip:
     - black
     - facenet-pytorch
+    - sacred
