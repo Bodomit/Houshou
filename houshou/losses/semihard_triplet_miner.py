@@ -6,13 +6,8 @@ import torch.nn.functional as F
 
 
 class TripletMiner(nn.Module):
-    def __init__(self, device=None):
+    def __init__(self):
         super().__init__()
-
-        if device:
-            self.device = device
-        else:
-            self.device = torch.device("cpu")
 
     def pairwise_distances(self, feature: torch.Tensor, p=2):
 
@@ -35,7 +30,7 @@ class TripletMiner(nn.Module):
         mask_offdiagonals = (
             torch.logical_not(torch.diagflat(torch.ones([num_data])))
             .to(torch.float32)
-            .to(self.device)
+            .to(pairwise_distances.device)
         )
         pairwise_distances = torch.multiply(pairwise_distances, mask_offdiagonals)
 
@@ -73,11 +68,10 @@ class SemiHardTripletMiner(TripletMiner):
         self,
         margin: float = 1.0,
         lambda_value: float = 0.0,
-        device=None,
         penalty_loss_name: str = "penalty",
         **kwargs
     ):
-        super().__init__(device=device)
+        super().__init__()
         self.margin = margin
         self.lambda_value = lambda_value
         self.penalty_loss_name = penalty_loss_name
@@ -135,8 +129,8 @@ class SemiHardTripletMiner(TripletMiner):
             self.margin, torch.subtract(pdist_matrix, semi_hard_negatives)
         )
 
-        mask_positives = adjacency - torch.diagflat(torch.ones(batch_size)).to(
-            self.device
+        mask_positives = adjacency - torch.diagflat(
+            torch.ones(batch_size, device=adjacency.device)
         )
 
         num_positives = torch.sum(mask_positives)

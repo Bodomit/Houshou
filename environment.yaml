@@ -16,3 +16,4 @@ dependencies:
     - sacred
     - namegenerator
     - pyyaml
+    - pytorch-lightning

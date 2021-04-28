@@ -134,3 +134,4 @@ dmypy.json
 # Application
 appconfig.yaml
 results/
+lightning_logs/
