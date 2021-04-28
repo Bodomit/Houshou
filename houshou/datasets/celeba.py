@@ -27,6 +27,7 @@ class CelebA(VisionDataset):
         use_png=True,
         transform: Optional[Callable] = None,
         target_transform: Optional[Callable] = None,
+        **kwargs,
     ):
         super(CelebA, self).__init__(
             root, transform=transform, target_transform=target_transform
@@ -55,13 +56,6 @@ class CelebA(VisionDataset):
         ]
 
         replace_ext_ = partial(self.replace_etx, ext)
-        splits = pandas.read_csv(  # type: ignore
-            fn("list_eval_partition.txt"),
-            delim_whitespace=True,
-            header=None,
-            index_col=0,
-            converters={0: replace_ext_},
-        )
         identity = pandas.read_csv(  # type: ignore
             fn("identity_CelebA.txt"),
             delim_whitespace=True,
@@ -69,25 +63,36 @@ class CelebA(VisionDataset):
             index_col=0,
             converters={0: replace_ext_},
         )
+
+        sort_order = identity.sort_values(1).index
+        identity = identity.loc[sort_order]
+
+        splits = pandas.read_csv(  # type: ignore
+            fn("list_eval_partition.txt"),
+            delim_whitespace=True,
+            header=None,
+            index_col=0,
+            converters={0: replace_ext_},
+        ).loc[sort_order]
         bbox = pandas.read_csv(
             fn("list_bbox_celeba.txt"),
             delim_whitespace=True,
             header=1,
             index_col=0,
             converters={0: replace_ext_},
-        )
+        ).loc[sort_order]
         landmarks_align = pandas.read_csv(
             fn("list_landmarks_align_celeba.txt"),
             delim_whitespace=True,
             header=1,
             converters={0: replace_ext_},
-        )
+        ).loc[sort_order]
         attr = pandas.read_csv(
             fn("list_attr_celeba.txt"),
             delim_whitespace=True,
             header=1,
             converters={0: replace_ext_},
-        )
+        ).loc[sort_order]
 
         diff = list(sorted(set(splits.index.values) - real_image_ids))
 

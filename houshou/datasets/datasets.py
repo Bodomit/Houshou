@@ -10,7 +10,7 @@ HoushouDataset = Union[CelebA]
 
 class AttributeDataset(Dataset):
     def __init__(
-        self, base_dataset: HoushouDataset, selected_attributes: List[str]
+        self, base_dataset: HoushouDataset, selected_attributes: List[str], **kwargs
     ) -> None:
         super().__init__()
         self.base_dataset = base_dataset
