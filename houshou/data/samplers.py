@@ -1,21 +1,27 @@
-import random
-
 import torch
-from torch.utils.data import Sampler, dataset
+from torch.utils.data import Sampler
 
-from typing import Iterator
+from typing import Iterator, List
 
 from houshou.data.datasets import AttributeDataset
 
 
-class TripletFriendlyRandomSampler(Sampler[int]):
-    def __init__(self, data_source: AttributeDataset, buffer_size=100) -> None:
+class TripletBatchRandomSampler(Sampler[List[int]]):
+    def __init__(
+        self,
+        data_source: AttributeDataset,
+        batch_size: int,
+        drop_last: bool,
+        buffer_size: int,
+    ) -> None:
         self.data_source = data_source
+        self.batch_size = batch_size
+        self.drop_last = drop_last
         self.buffer_size = buffer_size
         assert torch.all(data_source.identity == data_source.identity.sort()[0])
 
-    def __iter__(self) -> Iterator[int]:
-        identity = self.data_source.identity
+    def __iter__(self) -> Iterator[List[int]]:
+        identity = self.data_source.identity.squeeze()
         id_unique, id_inverse = identity.unique(return_inverse=True)
         id_inverse = id_inverse.squeeze()
 
@@ -40,19 +46,46 @@ class TripletFriendlyRandomSampler(Sampler[int]):
             buffer.append(identity_map[real_idx])
             real_idx += 1
 
-        # For each index requested, sample from the populated buffer.
+        # For each batch requested, sample batch_size indexes from the populated buffer.
         while True:
-            try:
-                # Randomly sample an index from the buffer
-                buffer_idx = random.randint(0, len(buffer) - 1)
-                dataset_idx = buffer[buffer_idx]
-            except (ValueError, IndexError):
-                # An error here means the buffer is empty, so stop iterating.
-                return
+            buffer_idxs = None
+            dataset_idxs = None
 
-            # Remove the index from the buffer and yield it.
-            del buffer[buffer_idx]
-            yield dataset_idx
+            # Randomly sample the buffer until a valid batch with triplets is found.
+            valid_batch = False
+            while not valid_batch:
+
+                # Randomly sample indexs from the buffer, convert to dataset indexs.
+                buffer_idxs = torch.randperm(len(buffer))[: self.batch_size]
+                dataset_idxs = torch.tensor(
+                    [buffer[b_idx] for b_idx in buffer_idxs], dtype=torch.long
+                )
+
+                # If batch is empty, exit the iterator.
+                if dataset_idxs.shape[0] == 0:
+                    return
+
+                # Validate the batch.
+                batch_identities = identity[dataset_idxs]
+                unique_batch_identities, batch_counts = batch_identities.unique(
+                    return_counts=True
+                )
+                valid_batch = len(unique_batch_identities) > 2 and torch.any(
+                    batch_counts > 2
+                )
+
+            # Remove the indexs from the buffer.
+            assert all([b_idx < len(buffer) for b_idx in buffer_idxs])
+            for b_idx in sorted(buffer_idxs, reverse=True):  # type: ignore
+                del buffer[b_idx]
+
+            # Yield the batch (or stop iterating if the end is reached).
+            if dataset_idxs.size()[0] == self.batch_size:
+                yield dataset_idxs.tolist()
+            elif self.drop_last is False:
+                yield dataset_idxs.tolist()
+            else:
+                return
 
             try:
                 # Replenish the buffer.
@@ -64,5 +97,10 @@ class TripletFriendlyRandomSampler(Sampler[int]):
                 # Continute iterating while the buffer is exhausted.
                 continue
 
-    def __len__(self) -> int:
-        return len(self.data_source)
+    def __len__(self):
+        if self.drop_last:
+            return len(self.data_source) // self.batch_size  # type: ignore
+        else:
+            return (
+                len(self.data_source) + self.batch_size - 1
+            ) // self.batch_size  # type: ignore
