@@ -9,7 +9,7 @@ from houshou.data.datasets import AttributeDataset
 
 
 class TripletFriendlyRandomSampler(Sampler[int]):
-    def __init__(self, data_source: AttributeDataset, buffer_size=1000) -> None:
+    def __init__(self, data_source: AttributeDataset, buffer_size=100) -> None:
         self.data_source = data_source
         self.buffer_size = buffer_size
         assert torch.all(data_source.identity == data_source.identity.sort()[0])

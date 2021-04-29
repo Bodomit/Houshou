@@ -3,6 +3,7 @@ import unittest
 
 import torch
 from torch.utils.data import Dataset, DataLoader
+from torch.utils.data.sampler import BatchSampler
 from torchvision import transforms
 
 from houshou.data import CelebA
@@ -81,17 +82,21 @@ class TripletFriendlyRandomSamplerTests(unittest.TestCase):
         for index in sampler:
             assert index < len(self.dataset)
 
-    def test_sampler_every_batch_has_valid_triplets(self):
-        sampler = TripletFriendlyRandomSampler(self.dataset)
+    def test_sampler_batchs_have_valid_triplets(self):
+        sampler = TripletFriendlyRandomSampler(self.dataset, buffer_size=100)
+        batch_sampler = BatchSampler(sampler, batch_size=32, drop_last=True)
 
-        N_BATCHS_TO_ASSERT = 10
+        for batch in batch_sampler:
+            identities = self.dataset.identity[batch]
+            unique_identities, counts = identities.unique(return_counts=True)
+            assert len(unique_identities) >= 2
+            assert torch.any(counts >= 2)
 
-        for i, (_, (yb, _)) in enumerate(
-            DataLoader(self.dataset, sampler=sampler, batch_size=32)
-        ):
+    def test_sampler_batchs_have_valid_triplets_full(self):
+        sampler = TripletFriendlyRandomSampler(self.dataset, buffer_size=100)
+
+        for _, (yb, _) in DataLoader(self.dataset, sampler=sampler, batch_size=32):
             yb_unique, counts = yb.unique(return_counts=True)
             assert len(yb_unique) >= 2
             assert torch.any(counts >= 2)
-
-            if i == N_BATCHS_TO_ASSERT - 1:
-                break
+            break
