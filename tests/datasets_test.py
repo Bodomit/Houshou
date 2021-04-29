@@ -73,10 +73,23 @@ class TripletFriendlyRandomSamplerTests(unittest.TestCase):
         dataset = CelebA(self.root, "train", transform=self.transform)
         self.dataset = AttributeDataset(dataset, ["Male"])
 
+    def test_sampler_complete_iteration(self):
+        sampler = TripletFriendlyRandomSampler(self.dataset)
+
+        for index in sampler:
+            assert index < len(self.dataset)
+
     def test_sampler_every_batch_has_valid_triplets(self):
         sampler = TripletFriendlyRandomSampler(self.dataset)
 
-        for _, (yb, _) in DataLoader(self.dataset, sampler=sampler, batch_size=32):
+        N_BATCHS_TO_ASSERT = 10
+
+        for i, (_, (yb, _)) in enumerate(
+            DataLoader(self.dataset, sampler=sampler, batch_size=32)
+        ):
             yb_unique, counts = yb.unique(return_counts=True)
             assert len(yb_unique) >= 2
             assert torch.any(counts >= 2)
+
+            if i == N_BATCHS_TO_ASSERT - 1:
+                break
