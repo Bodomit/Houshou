@@ -18,7 +18,7 @@ import houshou.utils as utils
 from houshou.losses import LOSS, get_loss
 from houshou.models import MultiTaskTrainingModel
 from houshou.trainers import MultitaskTrainer
-from houshou.datasets import DATASET, get_dataset
+from houshou.data import DATASET, get_dataset
 
 ROOT_RESULTS_DIR = utils.parse_root_results_directory_argument(sys.argv[1::])
 SACRED_DIR = os.path.join(ROOT_RESULTS_DIR, "sacred")
