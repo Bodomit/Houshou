@@ -40,6 +40,7 @@ class CelebADatasetTests(unittest.TestCase):
         for image, target in dataset:
             assert image is not None
             assert len(target) == 2
+            break
 
 
 class AttributeDatasetTests(unittest.TestCase):
@@ -54,6 +55,7 @@ class AttributeDatasetTests(unittest.TestCase):
             assert image is not None
             assert identity.shape == torch.Size([])
             assert attributes.shape == torch.Size([1])
+            break
 
 
 class TripletFriendlyRandomSamplerTests(unittest.TestCase):
