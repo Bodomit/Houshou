@@ -4,6 +4,7 @@ from torch.utils.data import Dataset
 
 from .celeba import CelebA
 from .datasets import AttributeDataset
+from .samplers import TripletBatchRandomSampler
 
 
 class DATASET(Enum):

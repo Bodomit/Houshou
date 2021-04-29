@@ -18,7 +18,7 @@ import houshou.utils as utils
 from houshou.losses import LOSS, get_loss
 from houshou.models import MultiTaskTrainingModel
 from houshou.trainers import MultitaskTrainer
-from houshou.data import DATASET, get_dataset
+from houshou.data import DATASET, get_dataset, TripletBatchRandomSampler
 
 ROOT_RESULTS_DIR = utils.parse_root_results_directory_argument(sys.argv[1::])
 SACRED_DIR = os.path.join(ROOT_RESULTS_DIR, "sacred")
@@ -37,8 +37,10 @@ def sh_multitask():
 
 @ex.config
 def default_config():
-    epochs = 50
+    max_epochs = 100
     batch_size = 8
+    drop_last_batch = True
+    shuffle_buffer_size = 100
     dataset = DATASET.CELEBA
     dataset_attribute = "Male"
 
@@ -54,17 +56,34 @@ def create_results_dir(results_directory: str) -> None:
             raise
 
 
+def construct_train_dataloader(
+    dataset,
+    batch_size: int,
+    num_workers: int,
+    drop_last: bool,
+    shuffle_buffer_size: int,
+):
+    return DataLoader(
+        dataset,
+        num_workers=num_workers,
+        batch_sampler=TripletBatchRandomSampler(
+            dataset, batch_size, drop_last, shuffle_buffer_size
+        ),
+    )
+
+
 @ex.automain
 def run(
     results_directory: str,
     dataset_root_directory: str,
     lambda_value: float,
-    epochs: int,
+    max_epochs: int,
     batch_size: int,
     dataset: DATASET,
     dataset_attribute: str,
     loss: LOSS,
-    _run,
+    shuffle_buffer_size: int,
+    drop_last_batch: bool,
 ):
 
     # Create the results directory: debug dir overwrites.
@@ -89,7 +108,9 @@ def run(
     train_dataset = get_dataset_(split="train", transform=transform)
     valid_dataset = get_dataset_(split="valid", transform=transform)
 
-    train_loader = DataLoader(train_dataset, batch_size=batch_size, num_workers=4)
+    train_loader = construct_train_dataloader(
+        train_dataset, batch_size, 4, drop_last_batch, shuffle_buffer_size
+    )
     valid_loader = DataLoader(valid_dataset, batch_size=batch_size, num_workers=4)
 
     # Loss
@@ -100,7 +121,7 @@ def run(
     system = MultitaskTrainer(model, loss_, lambda_value)
 
     # Training
-    trainer = pl.Trainer(gpus=1)
+    trainer = pl.Trainer(gpus=1, max_epochs=max_epochs)
     trainer.fit(system, train_loader, valid_loader)
 
     raise NotImplementedError

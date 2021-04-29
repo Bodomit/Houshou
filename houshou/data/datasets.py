@@ -2,7 +2,6 @@ from typing import List, Union
 
 import torch
 from torch.utils.data import Dataset
-from torchvision.datasets.vision import VisionDataset
 
 from .celeba import CelebA
 
