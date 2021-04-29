@@ -1,5 +1,6 @@
 from typing import List, Union
 
+import torch
 from torch.utils.data import Dataset
 from torchvision.datasets.vision import VisionDataset
 
@@ -19,6 +20,10 @@ class AttributeDataset(Dataset):
         self.indexs = self.get_indexes(
             self.base_dataset.attr_names, self.selected_attributes
         )
+
+    @property
+    def identity(self) -> torch.Tensor:
+        return self.base_dataset.identity
 
     def get_indexes(self, attr_names: List[str], selected_attrs: List[str]):
         indexs: List[int] = []

@@ -2,10 +2,12 @@ import os
 import unittest
 
 import torch
-from torch.utils.data.dataset import Dataset
+from torch.utils.data import Dataset, DataLoader
+from torchvision import transforms
 
-from houshou.datasets import CelebA
-from houshou.datasets.datasets import AttributeDataset
+from houshou.data import CelebA
+from houshou.data import AttributeDataset
+from houshou.data.samplers import TripletFriendlyRandomSampler
 
 POSSIBLE_DATASET_ROOT_DIRS = ["/mnt/e/datasets"]
 
@@ -52,3 +54,29 @@ class AttributeDatasetTests(unittest.TestCase):
             assert image is not None
             assert identity.shape == torch.Size([])
             assert attributes.shape == torch.Size([1])
+
+
+class TripletFriendlyRandomSamplerTests(unittest.TestCase):
+    def __init__(self, methodName: str) -> None:
+        super().__init__(methodName=methodName)
+        self.root = get_root_dir()
+
+        self.transform = transforms.Compose(
+            [
+                transforms.ToTensor(),  # Reads images scales to [0, 1]
+                transforms.Lambda(lambda x: x * 2 - 1),  # Change range to [-1, 1]
+                transforms.Resize((160, 160)),
+                transforms.RandomHorizontalFlip(p=0.5),
+            ]
+        )
+
+        dataset = CelebA(self.root, "train", transform=self.transform)
+        self.dataset = AttributeDataset(dataset, ["Male"])
+
+    def test_sampler_every_batch_has_valid_triplets(self):
+        sampler = TripletFriendlyRandomSampler(self.dataset)
+
+        for _, (yb, _) in DataLoader(self.dataset, sampler=sampler, batch_size=32):
+            yb_unique, counts = yb.unique(return_counts=True)
+            assert len(yb_unique) >= 2
+            assert torch.any(counts >= 2)
