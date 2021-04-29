@@ -1,3 +1,4 @@
+import warnings
 import torch
 from torch.utils.data import Sampler
 
@@ -13,11 +14,13 @@ class TripletBatchRandomSampler(Sampler[List[int]]):
         batch_size: int,
         drop_last: bool,
         buffer_size: int,
+        max_batch_retry: int = 100,
     ) -> None:
         self.data_source = data_source
         self.batch_size = batch_size
         self.drop_last = drop_last
         self.buffer_size = buffer_size
+        self.max_batch_retry = max_batch_retry
         assert torch.all(data_source.identity == data_source.identity.sort()[0])
 
     def __iter__(self) -> Iterator[List[int]]:
@@ -53,6 +56,7 @@ class TripletBatchRandomSampler(Sampler[List[int]]):
 
             # Randomly sample the buffer until a valid batch with triplets is found.
             valid_batch = False
+            batch_retry_attempts = 0
             while not valid_batch:
 
                 # Randomly sample indexs from the buffer, convert to dataset indexs.
@@ -73,6 +77,18 @@ class TripletBatchRandomSampler(Sampler[List[int]]):
                 valid_batch = len(unique_batch_identities) > 2 and torch.any(
                     batch_counts > 2
                 )
+
+                # If sampling is stuck and can't produce a valid batch, exit early.
+                if batch_retry_attempts < self.max_batch_retry:
+                    batch_retry_attempts += 1
+                else:
+                    warning_str = (
+                        "Max retries for triplet batch validation reached: "
+                        + str(self.max_batch_retry)
+                        + ". Stopping Sampling early..."
+                    )
+                    warnings(warning_str)
+                    return
 
             # Remove the indexs from the buffer.
             assert all([b_idx < len(buffer) for b_idx in buffer_idxs])
