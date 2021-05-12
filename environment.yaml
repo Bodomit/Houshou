@@ -1,15 +1,18 @@
 name: houshou
 channels:
   - defaults
+  - pytorch
+  - nvidia
 dependencies:
   - python=3.9
   - pytorch::pytorch=1.8.1
-  - pytorch::torchvision
-  - cudatoolkit=11.1
+  - torchvision>=0.9
+  - cudatoolkit>=10.2
   - pip
   - pycodestyle
   - numpy
   - pandas
+  - pytest
   - pip:
     - black
     - facenet-pytorch
