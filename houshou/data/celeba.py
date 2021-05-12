@@ -103,6 +103,10 @@ class CelebA(VisionDataset):
         assert len(splits) == len(real_image_ids)
         mask = slice(None) if split_ is None else (splits[1] == split_)
 
+        assert isinstance(bbox, pandas.DataFrame)
+        assert isinstance(landmarks_align, pandas.DataFrame)
+        assert isinstance(attr, pandas.DataFrame)
+
         self.filename = splits[mask].index.values
         self.identity = torch.as_tensor(rm_diff(identity)[mask].values)
         self.bbox = torch.as_tensor(rm_diff(bbox)[mask].values)

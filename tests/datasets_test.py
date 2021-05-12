@@ -1,5 +1,6 @@
 import os
 import unittest
+import pytest
 
 import torch
 from torch.utils.data import Dataset, DataLoader
@@ -9,16 +10,18 @@ from houshou.data import CelebA
 from houshou.data import AttributeDataset
 from houshou.data.samplers import TripletBatchRandomSampler
 
-POSSIBLE_DATASET_ROOT_DIRS = ["/mnt/e/datasets"]
+POSSIBLE_DATASET_ROOT_DIRS = ["/mnt/e/datasets", "~/datasets"]
 
 
 def get_root_dir() -> str:
     for dir in POSSIBLE_DATASET_ROOT_DIRS:
+        dir = os.path.abspath(os.path.expanduser(dir))
         if os.path.isdir(dir):
             return dir
     raise ValueError("No dataset directory found.")
 
 
+@pytest.mark.local
 class CelebADatasetTests(unittest.TestCase):
     def setUp(self):
         self.root = get_root_dir()
@@ -31,6 +34,7 @@ class CelebADatasetTests(unittest.TestCase):
         for image, target in dataset:
             assert image is not None
             assert len(target) == 2
+            break
 
     def test_load_test(self):
         dataset = CelebA(self.root, "test")
@@ -43,6 +47,7 @@ class CelebADatasetTests(unittest.TestCase):
             break
 
 
+@pytest.mark.local
 class AttributeDatasetTests(unittest.TestCase):
     def setUp(self):
         self.root = get_root_dir()
@@ -58,6 +63,7 @@ class AttributeDatasetTests(unittest.TestCase):
             break
 
 
+@pytest.mark.local
 class TripletFriendlyRandomSamplerTests(unittest.TestCase):
     def __init__(self, methodName: str) -> None:
         super().__init__(methodName=methodName)
