@@ -13,3 +13,7 @@ dependencies:
   - pip:
     - black
     - facenet-pytorch
+    - sacred
+    - namegenerator
+    - pyyaml
+    - pytorch-lightning
