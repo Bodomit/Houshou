@@ -12,7 +12,6 @@ from sacred.utils import apply_backspaces_and_linefeeds
 from torch.utils.data import DataLoader
 from torchvision import transforms
 import pytorch_lightning as pl
-from torchvision.transforms.transforms import Resize
 
 import houshou.utils as utils
 from houshou.losses import LOSS, get_loss
