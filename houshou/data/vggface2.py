@@ -1,17 +1,12 @@
 import os
-import glob
-from functools import partial
 
-from typing import Any, Callable, List, Optional, Set, Tuple
-from numpy.random import sample
+from typing import Callable, List, Optional, Set, Tuple
 
 import pandas
 import numpy as np
 
-import torch
 from torch.utils.data import random_split
-from torchvision import datasets
-from torchvision.datasets import ImageFolder, VisionDataset
+from torchvision.datasets import ImageFolder
 from torchvision.datasets.utils import verify_str_arg
 
 
@@ -28,15 +23,25 @@ class VGGFace2(ImageFolder):
         valid_split_seed=42,
         **kwargs,
     ):
-        self.base_folder = base_folder
         self.target_type = target_type
         split_ = verify_str_arg(split.lower(), "split", ("train", "valid", "test"))
         real_split = "train" if split_ in ["train", "valid"] else "test"
+        split_dir = os.path.join(root, base_folder, real_split)
 
+        # Read the attributes.
+        attributes = pandas.read_csv(  # type: ignore
+            os.path.join(root, base_folder, "MAAD_Face.csv"),
+            index_col=0,
+        )
+
+        imgs_with_attrs = set(attributes.index.tolist())
+
+        # Read the dataset.
         super(VGGFace2, self).__init__(
-            os.path.join(root, self.base_folder, real_split),
+            split_dir,
             transform=transform,
             target_transform=target_transform,
+            is_valid_file=lambda p: os.path.relpath(p, split_dir) in imgs_with_attrs,
         )
 
         if split_ in ["train", "valid"]:
@@ -49,6 +54,19 @@ class VGGFace2(ImageFolder):
                 self.restrict_dataset(train_classes)
             else:
                 self.restrict_dataset(valid_classes)
+
+        # Remove any attribute lines that are not in the dataset.
+        real_imgs = [os.path.relpath(s[0], start=split_dir) for s in self.samples]
+        diff = set(attributes.index.values) - set(real_imgs)
+        attributes = attributes.drop(list(diff), errors="ignore")
+
+        sort_order = attributes.index.sort_values()
+        self.attributes = attributes.loc[sort_order]
+
+        # Ensure the attribute file and dataset are aligned.
+        assert isinstance(self.attributes, pandas.DataFrame)
+        for x, y in zip(real_imgs, self.attributes.index.tolist()):
+            assert x == y
 
     @staticmethod
     def get_valid_set_classes(
