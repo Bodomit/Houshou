@@ -1,3 +1,4 @@
+from houshou.data.vggface2 import VGGFace2
 from typing import List, Union
 
 import torch
@@ -5,7 +6,7 @@ from torch.utils.data import Dataset
 
 from .celeba import CelebA
 
-HoushouDataset = Union[CelebA]
+HoushouDataset = Union[CelebA, VGGFace2]
 
 
 class AttributeDataset(Dataset):

@@ -1,7 +1,6 @@
 import os
 import glob
 from functools import partial
-from os.path import basename
 
 from typing import Any, Callable, List, Optional, Tuple
 
