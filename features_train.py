@@ -12,6 +12,7 @@ from sacred.utils import apply_backspaces_and_linefeeds
 from torch.utils.data import DataLoader
 from torchvision import transforms
 import pytorch_lightning as pl
+from pytorch_lightning import loggers as pl_loggers
 
 import houshou.utils as utils
 from houshou.losses import LOSS, get_loss
@@ -36,10 +37,10 @@ def sh_multitask():
 
 @ex.config
 def default_config():
-    max_epochs = 100
-    batch_size = 8
+    max_epochs = 50
+    batch_size = 256
     drop_last_batch = True
-    shuffle_buffer_size = 100
+    shuffle_buffer_size = 1000
     dataset = DATASET.CELEBA
     dataset_attribute = "Male"
 
@@ -112,6 +113,12 @@ def run(
     )
     valid_loader = DataLoader(valid_dataset, batch_size=batch_size, num_workers=4)
 
+    # Logger
+    loggers = [
+        pl_loggers.TestTubeLogger(os.path.join(results_directory, "tt_logs")),
+        pl_loggers.CSVLogger(os.path.join(results_directory, "csv_logs")),
+    ]
+
     # Loss
     loss_ = get_loss(loss)
 
@@ -120,7 +127,7 @@ def run(
     system = MultitaskTrainer(model, loss_, lambda_value)
 
     # Training
-    trainer = pl.Trainer(gpus=1, max_epochs=max_epochs)
+    trainer = pl.Trainer(gpus=1, max_epochs=max_epochs, logger=loggers)
     trainer.fit(system, train_loader, valid_loader)
 
     raise NotImplementedError
