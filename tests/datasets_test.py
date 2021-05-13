@@ -2,6 +2,8 @@ import os
 import unittest
 import pytest
 
+from PIL.Image import Image
+
 import torch
 from torch.utils.data import Dataset, DataLoader
 from torchvision import transforms
@@ -33,7 +35,12 @@ class CelebADatasetTests(unittest.TestCase):
 
         for image, target in dataset:
             assert image is not None
+            assert isinstance(image, Image)
             assert len(target) == 2
+            assert isinstance(target[0], torch.Tensor)
+            assert isinstance(target[1], torch.Tensor)
+            assert isinstance(target[0].item(), int)
+            assert len(target[1]) > 1 and len(target[1].shape) == 1
             break
 
     def test_load_test(self):
@@ -43,7 +50,12 @@ class CelebADatasetTests(unittest.TestCase):
 
         for image, target in dataset:
             assert image is not None
+            assert isinstance(image, Image)
             assert len(target) == 2
+            assert isinstance(target[0], torch.Tensor)
+            assert isinstance(target[1], torch.Tensor)
+            assert isinstance(target[0].item(), int)
+            assert len(target[1]) > 1 and len(target[1].shape) == 1
             break
 
 
@@ -160,21 +172,36 @@ class VGGFAce2DatasetTests(unittest.TestCase):
 
         for image, target in train_dataset:
             assert image is not None
+            assert isinstance(image, Image)
             assert len(target) == 2
+            assert isinstance(target[0], torch.Tensor)
+            assert isinstance(target[1], torch.Tensor)
+            assert isinstance(target[0].item(), int)
+            assert len(target[1]) > 1 and len(target[1].shape) == 1
             break
 
         for image, target in valid_dataset:
             assert image is not None
+            assert isinstance(image, Image)
             assert len(target) == 2
+            assert isinstance(target[0], torch.Tensor)
+            assert isinstance(target[1], torch.Tensor)
+            assert isinstance(target[0].item(), int)
+            assert len(target[1]) > 1 and len(target[1].shape) == 1
             break
 
     @pytest.mark.local
     def test_load_test(self):
         dataset = VGGFace2(self.root, "test")
         assert dataset is not None
-        assert len(dataset) == 169177
+        assert len(dataset) == 169157
 
         for image, target in dataset:
             assert image is not None
+            assert isinstance(image, Image)
             assert len(target) == 2
+            assert isinstance(target[0], torch.Tensor)
+            assert isinstance(target[1], torch.Tensor)
+            assert isinstance(target[0].item(), int)
+            assert len(target[1]) > 1 and len(target[1].shape) == 1
             break

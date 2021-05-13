@@ -136,7 +136,6 @@ class CelebA(VisionDataset):
             elif t == "landmarks":
                 target.append(self.landmarks_align[index, :])
             else:
-                # TODO: refactor with utils.verify_str_arg
                 raise ValueError('Target type "{}" is not recognized.'.format(t))
 
         if self.transform is not None:

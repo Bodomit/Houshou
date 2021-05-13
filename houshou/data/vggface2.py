@@ -1,6 +1,6 @@
 import os
 
-from typing import Callable, List, Optional, Set, Tuple
+from typing import Any, Callable, List, Optional, Set, Tuple
 
 import pandas
 import numpy as np
@@ -24,6 +24,9 @@ class VGGFace2(ImageFolder):
         **kwargs,
     ):
         self.target_type = target_type
+        self.target_transform = target_transform
+        self.extensions = ["jpg"]
+
         split_ = verify_str_arg(split.lower(), "split", ("train", "valid", "test"))
         real_split = "train" if split_ in ["train", "valid"] else "test"
         split_dir = os.path.join(root, base_folder, real_split)
@@ -60,11 +63,14 @@ class VGGFace2(ImageFolder):
         diff = set(attributes.index.values) - set(real_imgs)
         attributes = attributes.drop(list(diff), errors="ignore")
 
+        # Sort the attributes to match the sample order.
         sort_order = attributes.index.sort_values()
-        self.attributes = attributes.loc[sort_order]
+        attributes = attributes.loc[sort_order]
+
+        assert isinstance(attributes, pandas.DataFrame)
+        self.attributes = attributes
 
         # Ensure the attribute file and dataset are aligned.
-        assert isinstance(self.attributes, pandas.DataFrame)
         for x, y in zip(real_imgs, self.attributes.index.tolist()):
             assert x == y
 
@@ -83,3 +89,25 @@ class VGGFace2(ImageFolder):
         self.class_to_idx = {k: self.class_to_idx[k] for k in classes_to_keep}
         self.samples = self.make_dataset(self.root, self.class_to_idx, self.extensions)
         self.targets = [s[1] for s in self.samples]
+
+    def __getitem__(self, index: int) -> Tuple[Any, Any]:
+        x, identity = super(VGGFace2, self).__getitem__(index)
+
+        target: Any = []
+        for t in self.target_type:
+            if t == "attr":
+                target.append(self.attributes.iloc[index])
+            elif t == "identity":
+                target.append(identity)
+            else:
+                raise ValueError('Target type "{}" is not recognized.'.format(t))
+
+        if target:
+            target = tuple(target) if len(target) > 1 else target[0]
+
+            if self.target_transform is not None:
+                target = self.target_transform(target)
+        else:
+            target = None
+
+        return x, target
