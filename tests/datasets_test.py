@@ -165,7 +165,6 @@ class VGGFAce2DatasetTests(unittest.TestCase):
     def test_load_train_val(self):
         train_dataset = VGGFace2(self.root, "train")
         valid_dataset = VGGFace2(self.root, "valid")
-        assert len(train_dataset) + len(valid_dataset) == 3138924
         assert set(train_dataset.classes).intersection(
             set(valid_dataset.classes)
         ) == set([])
@@ -177,7 +176,7 @@ class VGGFAce2DatasetTests(unittest.TestCase):
             assert isinstance(target[0], torch.Tensor)
             assert isinstance(target[1], torch.Tensor)
             assert isinstance(target[0].item(), int)
-            assert len(target[1]) > 1 and len(target[1].shape) == 1
+            assert len(target[1]) >= 1 and len(target[1].shape) == 1
             break
 
         for image, target in valid_dataset:
@@ -187,7 +186,7 @@ class VGGFAce2DatasetTests(unittest.TestCase):
             assert isinstance(target[0], torch.Tensor)
             assert isinstance(target[1], torch.Tensor)
             assert isinstance(target[0].item(), int)
-            assert len(target[1]) > 1 and len(target[1].shape) == 1
+            assert len(target[1]) >= 1 and len(target[1].shape) == 1
             break
 
     @pytest.mark.local
@@ -203,5 +202,5 @@ class VGGFAce2DatasetTests(unittest.TestCase):
             assert isinstance(target[0], torch.Tensor)
             assert isinstance(target[1], torch.Tensor)
             assert isinstance(target[0].item(), int)
-            assert len(target[1]) > 1 and len(target[1].shape) == 1
+            assert len(target[1]) >= 1 and len(target[1].shape) == 1
             break

@@ -5,7 +5,7 @@ from typing import Any, Callable, List, Optional, Set, Tuple
 import pandas
 import numpy as np
 
-from torch.utils.data import random_split
+import torch
 from torchvision.datasets import ImageFolder
 from torchvision.datasets.utils import verify_str_arg
 
@@ -25,26 +25,30 @@ class VGGFace2(ImageFolder):
     ):
         self.target_type = target_type
         self.target_transform = target_transform
-        self.extensions = ["jpg"]
 
         split_ = verify_str_arg(split.lower(), "split", ("train", "valid", "test"))
         real_split = "train" if split_ in ["train", "valid"] else "test"
         split_dir = os.path.join(root, base_folder, real_split)
 
-        # Read the attributes.
+        # Read the attributes. Usecols is specified to reduce memory usage
+        # and parsing time, and needs expanded if other attributes are used.
         attributes = pandas.read_csv(  # type: ignore
             os.path.join(root, base_folder, "MAAD_Face.csv"),
             index_col=0,
+            usecols=["Filename", "Male"],
         )
 
         imgs_with_attrs = set(attributes.index.tolist())
+
+        def is_valid_file(path: str):
+            return os.path.relpath(path, split_dir) in imgs_with_attrs
 
         # Read the dataset.
         super(VGGFace2, self).__init__(
             split_dir,
             transform=transform,
             target_transform=target_transform,
-            is_valid_file=lambda p: os.path.relpath(p, split_dir) in imgs_with_attrs,
+            is_valid_file=is_valid_file,
         )
 
         if split_ in ["train", "valid"]:
@@ -54,9 +58,9 @@ class VGGFace2(ImageFolder):
 
             if split_ == "train":
                 train_classes = set(self.classes) - valid_classes
-                self.restrict_dataset(train_classes)
+                self.restrict_dataset(train_classes, is_valid_file)
             else:
-                self.restrict_dataset(valid_classes)
+                self.restrict_dataset(valid_classes, is_valid_file)
 
         # Remove any attribute lines that are not in the dataset.
         real_imgs = [os.path.relpath(s[0], start=split_dir) for s in self.samples]
@@ -68,11 +72,15 @@ class VGGFace2(ImageFolder):
         attributes = attributes.loc[sort_order]
 
         assert isinstance(attributes, pandas.DataFrame)
-        self.attributes = attributes
-
         # Ensure the attribute file and dataset are aligned.
-        for x, y in zip(real_imgs, self.attributes.index.tolist()):
+        for x, y in zip(real_imgs, attributes.index.tolist()):
             assert x == y
+
+        self.identity = torch.as_tensor([s[1] for s in self.samples])
+        self.attributes = torch.as_tensor(attributes.values)
+        self.attr_names = list(attributes.columns)
+
+        assert len(self.identity) == len(self.attributes) == len(self.samples)
 
     @staticmethod
     def get_valid_set_classes(
@@ -84,10 +92,12 @@ class VGGFace2(ImageFolder):
         valid_classes = rng.choice(sorted(classes), size=n_valid_set_classes)
         return set(valid_classes)
 
-    def restrict_dataset(self, classes_to_keep: Set[str]):
+    def restrict_dataset(self, classes_to_keep: Set[str], is_valid_file: Callable):
         self.classes = list(sorted(classes_to_keep))
         self.class_to_idx = {k: self.class_to_idx[k] for k in classes_to_keep}
-        self.samples = self.make_dataset(self.root, self.class_to_idx, self.extensions)
+        self.samples = self.make_dataset(
+            self.root, self.class_to_idx, is_valid_file=is_valid_file
+        )
         self.targets = [s[1] for s in self.samples]
 
     def __getitem__(self, index: int) -> Tuple[Any, Any]:
@@ -96,9 +106,9 @@ class VGGFace2(ImageFolder):
         target: Any = []
         for t in self.target_type:
             if t == "attr":
-                target.append(self.attributes.iloc[index])
+                target.append(self.attributes[index, :])
             elif t == "identity":
-                target.append(identity)
+                target.append(self.identity[index])
             else:
                 raise ValueError('Target type "{}" is not recognized.'.format(t))
 
