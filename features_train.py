@@ -69,6 +69,7 @@ def construct_train_dataloader(
         batch_sampler=TripletBatchRandomSampler(
             dataset, batch_size, drop_last, shuffle_buffer_size
         ),
+        pin_memory=True,
     )
 
 
@@ -111,7 +112,9 @@ def run(
     train_loader = construct_train_dataloader(
         train_dataset, batch_size, 4, drop_last_batch, shuffle_buffer_size
     )
-    valid_loader = DataLoader(valid_dataset, batch_size=batch_size, num_workers=4)
+    valid_loader = DataLoader(
+        valid_dataset, batch_size=batch_size, num_workers=4, pin_memory=True
+    )
 
     # Logger
     loggers = [
@@ -127,7 +130,12 @@ def run(
     system = MultitaskTrainer(model, loss_, lambda_value)
 
     # Training
-    trainer = pl.Trainer(gpus=1, max_epochs=max_epochs, logger=loggers)
+    trainer = pl.Trainer(
+        gpus=1,
+        max_epochs=max_epochs,
+        logger=loggers,
+        default_root_dir=results_directory,
+    )
     trainer.fit(system, train_loader, valid_loader)
 
     raise NotImplementedError
