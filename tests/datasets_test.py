@@ -165,9 +165,11 @@ class VGGFAce2DatasetTests(unittest.TestCase):
     def test_load_train_val(self):
         train_dataset = VGGFace2(self.root, "train")
         valid_dataset = VGGFace2(self.root, "valid")
-        assert set(train_dataset.classes).intersection(
-            set(valid_dataset.classes)
-        ) == set([])
+
+        trian_classes = set(s[1] for s in train_dataset.samples)
+        valid_classes = set(s[1] for s in valid_dataset.samples)
+
+        assert set.intersection(trian_classes, valid_classes) == set([])
 
         for image, target in train_dataset:
             assert image is not None

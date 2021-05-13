@@ -28,7 +28,10 @@ class VGGFace2(ImageFolder):
 
         split_ = verify_str_arg(split.lower(), "split", ("train", "valid", "test"))
         real_split = "train" if split_ in ["train", "valid"] else "test"
-        split_dir = os.path.join(root, base_folder, real_split)
+        real_split_dir = os.path.join(root, base_folder, real_split)
+        real_split_classes = set(
+            [d.name for d in os.scandir(real_split_dir) if d.is_dir()]
+        )
 
         # Read the attributes. Usecols is specified to reduce memory usage
         # and parsing time, and needs expanded if other attributes are used.
@@ -38,32 +41,41 @@ class VGGFace2(ImageFolder):
             usecols=["Filename", "Male"],
         )
 
+        # Get the permitted classes to be used for the dataset.
+        # Note is_valid_file() does not affect self.classes or self.class_to_idx
+        # so these attributes will be the same for train and val... which is annoying.
+        if split_ in ["train", "valid"]:
+            valid_classes = self.get_valid_set_classes(
+                real_split_classes, valid_split, valid_split_seed
+            )
+            train_classes = real_split_classes - valid_classes
+            split_classes = valid_classes if split_ == "valid" else train_classes
+
+        elif split_ == "test":
+            split_classes = real_split_classes
+        else:
+            raise ValueError
+
+        # Get the filenames with corresponding attributes.
         imgs_with_attrs = set(attributes.index.tolist())
 
+        # Read the samples but only if they have corresponding attributes
+        # and belong to the correct class for the split.
         def is_valid_file(path: str):
-            return os.path.relpath(path, split_dir) in imgs_with_attrs
+            return (
+                os.path.basename(os.path.dirname(path)) in split_classes
+                and os.path.relpath(path, real_split_dir) in imgs_with_attrs
+            )
 
-        # Read the dataset.
         super(VGGFace2, self).__init__(
-            split_dir,
+            real_split_dir,
             transform=transform,
             target_transform=target_transform,
             is_valid_file=is_valid_file,
         )
 
-        if split_ in ["train", "valid"]:
-            valid_classes = self.get_valid_set_classes(
-                set(self.classes), valid_split, valid_split_seed
-            )
-
-            if split_ == "train":
-                train_classes = set(self.classes) - valid_classes
-                self.restrict_dataset(train_classes, is_valid_file)
-            else:
-                self.restrict_dataset(valid_classes, is_valid_file)
-
-        # Remove any attribute lines that are not in the dataset.
-        real_imgs = [os.path.relpath(s[0], start=split_dir) for s in self.samples]
+        # Remove any attribute lines that are not in the dataset samples.
+        real_imgs = [os.path.relpath(s[0], start=real_split_dir) for s in self.samples]
         diff = set(attributes.index.values) - set(real_imgs)
         attributes = attributes.drop(list(diff), errors="ignore")
 
@@ -71,8 +83,8 @@ class VGGFace2(ImageFolder):
         sort_order = attributes.index.sort_values()
         attributes = attributes.loc[sort_order]
 
+        # Ensure the attribute file and samples are aligned.
         assert isinstance(attributes, pandas.DataFrame)
-        # Ensure the attribute file and dataset are aligned.
         for x, y in zip(real_imgs, attributes.index.tolist()):
             assert x == y
 
@@ -80,6 +92,7 @@ class VGGFace2(ImageFolder):
         self.attributes = torch.as_tensor(attributes.values)
         self.attr_names = list(attributes.columns)
 
+        # One last sanity check
         assert len(self.identity) == len(self.attributes) == len(self.samples)
 
     @staticmethod
@@ -92,14 +105,6 @@ class VGGFace2(ImageFolder):
         valid_classes = rng.choice(sorted(classes), size=n_valid_set_classes)
         return set(valid_classes)
 
-    def restrict_dataset(self, classes_to_keep: Set[str], is_valid_file: Callable):
-        self.classes = list(sorted(classes_to_keep))
-        self.class_to_idx = {k: self.class_to_idx[k] for k in classes_to_keep}
-        self.samples = self.make_dataset(
-            self.root, self.class_to_idx, is_valid_file=is_valid_file
-        )
-        self.targets = [s[1] for s in self.samples]
-
     def __getitem__(self, index: int) -> Tuple[Any, Any]:
         x, identity = super(VGGFace2, self).__getitem__(index)
 
@@ -108,7 +113,11 @@ class VGGFace2(ImageFolder):
             if t == "attr":
                 target.append(self.attributes[index, :])
             elif t == "identity":
-                target.append(self.identity[index])
+                # Reads identity from the separte tensor rather than the underlying
+                # sample target. Messy but helps ensure everythign is correctly aligned.
+                identity_ = self.identity[index]
+                assert identity_.item() == identity
+                target.append(identity_)
             else:
                 raise ValueError('Target type "{}" is not recognized.'.format(t))
 
