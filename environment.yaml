@@ -13,8 +13,6 @@ dependencies:
   - numpy
   - pandas
   - pytest
-  - tqdm
-  - scikit-learn
   - pip:
     - black
     - facenet-pytorch
@@ -22,5 +20,3 @@ dependencies:
     - namegenerator
     - pyyaml
     - pytorch-lightning
-    - torchmetrics
-    - test-tube
