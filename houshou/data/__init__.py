@@ -14,7 +14,7 @@ class DATASET(Enum):
     LFW = auto()
 
 
-def get_dataset(dataset: DATASET, **kwargs) -> AttributeDataset:
+def get_dataset(dataset: DATASET, **kwargs) -> Dataset:
     if dataset == DATASET.CELEBA:
         dataset_ = CelebA(**kwargs)
     elif dataset == DATASET.VGGFACE2:
