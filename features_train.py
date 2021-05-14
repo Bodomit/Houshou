@@ -19,6 +19,7 @@ from houshou.losses import LOSS, get_loss
 from houshou.models import MultiTaskTrainingModel
 from houshou.trainers import MultitaskTrainer
 from houshou.data import DATASET, get_dataset, TripletBatchRandomSampler
+from houshou.metrics import CVThresholdingVerifier
 
 ROOT_RESULTS_DIR = utils.parse_root_results_directory_argument(sys.argv[1::])
 SACRED_DIR = os.path.join(ROOT_RESULTS_DIR, "sacred")
@@ -125,9 +126,12 @@ def run(
     # Loss
     loss_ = get_loss(loss)
 
+    # Verifier.
+    verifier = CVThresholdingVerifier(valid_dataset, batch_size)
+
     # Model
     model = MultiTaskTrainingModel()
-    system = MultitaskTrainer(model, loss_, lambda_value)
+    system = MultitaskTrainer(model, loss_, lambda_value, verifier)
 
     # Training
     trainer = pl.Trainer(
@@ -135,7 +139,8 @@ def run(
         max_epochs=max_epochs,
         logger=loggers,
         default_root_dir=results_directory,
+        auto_select_gpus=True,
+        fast_dev_run=True,
+        weights_summary="full",
     )
     trainer.fit(system, train_loader, valid_loader)
-
-    raise NotImplementedError
