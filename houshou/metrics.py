@@ -209,12 +209,12 @@ class CVThresholdingVerifier(Verifier):
         self.n_splits = n_splits
 
     def cv_thresholding_verification(
-        self, model: nn.Module
+        self, model: nn.Module, device: torch.device
     ) -> Tuple[
         Tuple[pd.DataFrame, List[ROCCurve]],
         Dict[Tuple[int, int], Tuple[pd.DataFrame, List[ROCCurve]]],
     ]:
-        distances, labels = self.get_distances_with_label(model)
+        distances, labels = self.get_distances_with_label(model, device)
         kf = KFold(n_splits=self.n_splits, shuffle=True)  # type: ignore
 
         metrics_ds: Optional[pd.DataFrame] = None
