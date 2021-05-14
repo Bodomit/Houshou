@@ -1,5 +1,4 @@
 import os
-import glob
 from functools import partial
 
 from typing import Any, Callable, List, Optional, Tuple
@@ -37,8 +36,14 @@ class CelebA(VisionDataset):
 
         ext = "png" if use_png else "jpg"
         fn = partial(os.path.join, self.root, self.base_folder)
-        pattern = fn(self.image_dir, f"*.{ext}")
-        real_image_ids = set([os.path.basename(f) for f in list(glob.glob(pattern))])
+        image_absdir = fn(self.image_dir)
+        real_image_ids = set(
+            [
+                os.path.basename(f.path)
+                for f in os.scandir(image_absdir)
+                if f.name.split(".")[1] == ext
+            ]
+        )
 
         if not self.target_type and self.target_transform is not None:
             raise RuntimeError("target_transform is specified but target_type is empty")
