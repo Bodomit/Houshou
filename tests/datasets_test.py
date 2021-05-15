@@ -70,6 +70,7 @@ class TripletFriendlyRandomSamplerTests(unittest.TestCase):
         self.data_dir = os.path.join(self.root, "CelebA_MTCNN")
 
         self.dataset_module = CelebA(self.data_dir, 8, 1000, ["Male"])
+        self.dataset_module.setup(None)
         self.identities = self.dataset_module.train.identities
 
     def test_sampler_batchs_have_valid_triplets(self):
