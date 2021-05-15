@@ -107,6 +107,17 @@ class CelebA(TripletsAttributeDataModule):
             converters={0: replace_ext_},
         ).loc[sort_order]
 
+        # Clip the attributes to boolean values.
+        def clip(x):
+            if x <= 0:
+                return 0
+            else:
+                return 1
+
+        assert isinstance(attrs, pandas.DataFrame)
+        attrs = attrs.applymap(clip).astype("bool")
+
+        # Remove attribute lines that have no corresponding image.
         diff = list(sorted(set(splits.index.values) - real_image_ids))
 
         def rm_diff(df: pandas.DataFrame) -> pandas.DataFrame:
@@ -118,6 +129,7 @@ class CelebA(TripletsAttributeDataModule):
         assert isinstance(landmarks_aligns, pandas.DataFrame)
         assert isinstance(attrs, pandas.DataFrame)
 
+        # Get the attribute names and coresponding indexes.
         attr_names = list(attrs.columns)
         selected_attribute_indexs = self.get_indexes(
             attr_names, self.selected_attributes
@@ -204,7 +216,7 @@ class CelebADataset(Dataset):
 
     def __getitem__(self, index):
         X = PIL.Image.open(  # type: ignore
-            os.path.join(self.data_dir, self.filenames[index])
+            os.path.join(self.data_dir, self.filenames[index])  # type: ignore
         )
 
         target: Any = []
@@ -223,4 +235,4 @@ class CelebADataset(Dataset):
         if self.transform is not None:
             X = self.transform(X)
 
-        return X, target
+        return X, tuple(target)

@@ -18,7 +18,6 @@ def get_dataset_module(dataset: DATASET, **kwargs) -> pl.LightningDataModule:
     if dataset == DATASET.CELEBA:
         dataset_module = CelebA(**kwargs)
     elif dataset == DATASET.VGGFACE2:
-        raise NotImplementedError
         dataset_module = VGGFace2(**kwargs)
     else:
         raise ValueError()
