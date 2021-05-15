@@ -4,39 +4,36 @@ from torch.utils.data import Sampler
 
 from typing import Iterator, List
 
-from houshou.data.datasets import AttributeDataset
-
 
 class TripletBatchRandomSampler(Sampler[List[int]]):
     def __init__(
         self,
-        data_source: AttributeDataset,
+        identities: torch.Tensor,
         batch_size: int,
         drop_last: bool,
         buffer_size: int,
         max_batch_retry: int = 100,
     ) -> None:
-        self.data_source = data_source
+        self.identities = identities.squeeze()
         self.batch_size = batch_size
         self.drop_last = drop_last
         self.buffer_size = buffer_size
         self.max_batch_retry = max_batch_retry
-        assert torch.all(data_source.identity == data_source.identity.sort()[0])
+        assert torch.all(identities == identities.sort()[0])
 
     def __iter__(self) -> Iterator[List[int]]:
-        identity = self.data_source.identity.squeeze()
-        id_unique, id_inverse = identity.unique(return_inverse=True)
+        id_unique, id_inverse = self.identities.unique(return_inverse=True)
         id_inverse = id_inverse.squeeze()
 
         # Map each sample's identity to another random integer (per identity) and sort.
         id_unique_perm = id_unique[torch.randperm(len(id_unique))]
         identity_with_mapped_ids = id_unique_perm[id_inverse]
         identity_map = identity_with_mapped_ids.argsort()
-        identity_perm = identity[identity_map]
+        identity_perm = self.identities[identity_map]
 
         # Ensure that only the order of the samples have changed.
         assert torch.all(
-            identity.unique(return_counts=True)[1]
+            self.identities.unique(return_counts=True)[1]
             == identity_perm.unique(return_counts=True)[1]
         )
 
@@ -70,7 +67,7 @@ class TripletBatchRandomSampler(Sampler[List[int]]):
                     return
 
                 # Validate the batch.
-                batch_identities = identity[dataset_idxs]
+                batch_identities = self.identities[dataset_idxs]
                 unique_batch_identities, batch_counts = batch_identities.unique(
                     return_counts=True
                 )
@@ -115,8 +112,8 @@ class TripletBatchRandomSampler(Sampler[List[int]]):
 
     def __len__(self):
         if self.drop_last:
-            return len(self.data_source) // self.batch_size  # type: ignore
+            return len(self.identities) // self.batch_size  # type: ignore
         else:
             return (
-                len(self.data_source) + self.batch_size - 1
+                len(self.identities) + self.batch_size - 1
             ) // self.batch_size  # type: ignore

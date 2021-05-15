@@ -4,11 +4,6 @@ from logging import warning
 
 from functools import partial
 
-from sacred import Experiment
-from sacred.observers import FileStorageObserver
-from sacred import SETTINGS
-from sacred.utils import apply_backspaces_and_linefeeds
-
 from torch.utils.data import DataLoader
 from torchvision import transforms
 import pytorch_lightning as pl
@@ -18,7 +13,7 @@ import houshou.utils as utils
 from houshou.losses import LOSS, get_loss
 from houshou.models import MultiTaskTrainingModel
 from houshou.trainers import MultitaskTrainer
-from houshou.data import DATASET, get_dataset, TripletBatchRandomSampler
+from houshou.data import DATASET, get_dataset_module, TripletBatchRandomSampler
 from houshou.metrics import CVThresholdingVerifier
 
 ROOT_RESULTS_DIR = utils.parse_root_results_directory_argument(sys.argv[1::])
@@ -102,7 +97,7 @@ def run(
     )
 
     get_dataset_ = partial(
-        get_dataset,
+        get_dataset_module,
         dataset,
         root=dataset_root_directory,
         selected_attributes=[dataset_attribute],

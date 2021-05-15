@@ -1,66 +1,75 @@
 import os
 from functools import partial
 
-from typing import Any, Callable, List, Optional, Tuple
+from typing import Any, List, Optional
 
 import pandas
 import PIL
 
 import torch
-from torchvision.datasets.vision import VisionDataset
-from torchvision.datasets.utils import verify_str_arg
+from torch.utils.data import Dataset
+from torchvision import transforms
+
+from .base import TripletsAttributeDataModule
 
 
-class CelebA(VisionDataset):
-    """
-    This code is based on the standard torchvision.datasets.CelebA dataset.
-    """
-
+class CelebA(TripletsAttributeDataModule):
     def __init__(
         self,
-        root: str,
-        split: str,
-        base_folder="CelebA_MTCNN",
+        data_dir: str = None,
+        batch_size: int = None,
+        buffer_size: int = None,
+        selected_attributes: List[str] = None,
         target_type: List[str] = ["identity", "attr"],
         use_png=True,
-        transform: Optional[Callable] = None,
-        target_transform: Optional[Callable] = None,
-        **kwargs,
     ):
-        super(CelebA, self).__init__(
-            root, transform=transform, target_transform=target_transform
-        )
-        self.base_folder = base_folder
+        assert data_dir
+        assert batch_size
+        assert buffer_size
+        assert selected_attributes
+
+        super().__init__(batch_size, buffer_size)
+
+        # Store attributes.
+        self.data_dir = data_dir
+        self.batch_size = batch_size
+        self.selected_attributes = selected_attributes
         self.target_type = target_type
         self.image_dir = "img_align_celeba_png" if use_png else "img_align_celeba"
+        self.ext = "png" if use_png else "jpg"
 
-        ext = "png" if use_png else "jpg"
-        fn = partial(os.path.join, self.root, self.base_folder)
+        # Define the transformations.
+        common_transforms = transforms.Compose(
+            [
+                transforms.ToTensor(),  # Reads images scales to [0, 1]
+                transforms.Lambda(lambda x: x * 2 - 1),  # Change range to [-1, 1]
+                transforms.Resize((160, 160)),
+            ]
+        )
+        self.train_transforms = transforms.Compose(
+            [common_transforms, transforms.RandomHorizontalFlip(p=0.5)]
+        )
+        self.val_transforms = common_transforms
+        self.test_transforms = common_transforms
+
+        self.dims = (3, 160, 160)
+
+    def setup(self, stage: Optional[str]) -> None:
+
+        fn = partial(os.path.join, self.data_dir)
         image_absdir = fn(self.image_dir)
         real_image_ids = set(
             [
                 os.path.basename(f.path)
                 for f in os.scandir(image_absdir)
-                if f.name.split(".")[1] == ext
+                if f.name.split(".")[1] == self.ext
             ]
         )
 
-        if not self.target_type and self.target_transform is not None:
-            raise RuntimeError("target_transform is specified but target_type is empty")
+        split_map = {"train": 0, "valid": 1, "test": 2}
 
-        split_map = {
-            "train": 0,
-            "valid": 1,
-            "test": 2,
-            "all": None,
-        }
-
-        split_ = split_map[
-            verify_str_arg(split.lower(), "split", ("train", "valid", "test", "all"))
-        ]
-
-        replace_ext_ = partial(self.replace_etx, ext)
-        identity = pandas.read_csv(  # type: ignore
+        replace_ext_ = partial(self.replace_etx, self.ext)
+        identities = pandas.read_csv(  # type: ignore
             fn("identity_CelebA.txt"),
             delim_whitespace=True,
             header=None,
@@ -68,8 +77,8 @@ class CelebA(VisionDataset):
             converters={0: replace_ext_},
         )
 
-        sort_order = identity.sort_values(1).index
-        identity = identity.loc[sort_order]
+        sort_order = identities.sort_values(1).index
+        identities = identities.loc[sort_order]
 
         splits = pandas.read_csv(  # type: ignore
             fn("list_eval_partition.txt"),
@@ -78,26 +87,37 @@ class CelebA(VisionDataset):
             index_col=0,
             converters={0: replace_ext_},
         ).loc[sort_order]
-        bbox = pandas.read_csv(
+        bboxes = pandas.read_csv(
             fn("list_bbox_celeba.txt"),
             delim_whitespace=True,
             header=1,
             index_col=0,
             converters={0: replace_ext_},
         ).loc[sort_order]
-        landmarks_align = pandas.read_csv(
+        landmarks_aligns = pandas.read_csv(
             fn("list_landmarks_align_celeba.txt"),
             delim_whitespace=True,
             header=1,
             converters={0: replace_ext_},
         ).loc[sort_order]
-        attr = pandas.read_csv(
+        attrs = pandas.read_csv(
             fn("list_attr_celeba.txt"),
             delim_whitespace=True,
             header=1,
             converters={0: replace_ext_},
         ).loc[sort_order]
 
+        # Clip the attributes to boolean values.
+        def clip(x):
+            if x <= 0:
+                return 0
+            else:
+                return 1
+
+        assert isinstance(attrs, pandas.DataFrame)
+        attrs = attrs.applymap(clip).astype("bool")
+
+        # Remove attribute lines that have no corresponding image.
         diff = list(sorted(set(splits.index.values) - real_image_ids))
 
         def rm_diff(df: pandas.DataFrame) -> pandas.DataFrame:
@@ -105,56 +125,114 @@ class CelebA(VisionDataset):
 
         splits = rm_diff(splits)
         assert len(splits) == len(real_image_ids)
-        mask = slice(None) if split_ is None else (splits[1] == split_)
+        assert isinstance(bboxes, pandas.DataFrame)
+        assert isinstance(landmarks_aligns, pandas.DataFrame)
+        assert isinstance(attrs, pandas.DataFrame)
 
-        assert isinstance(bbox, pandas.DataFrame)
-        assert isinstance(landmarks_align, pandas.DataFrame)
-        assert isinstance(attr, pandas.DataFrame)
+        # Get the attribute names and coresponding indexes.
+        attr_names = list(attrs.columns)
+        selected_attribute_indexs = self.get_indexes(
+            attr_names, self.selected_attributes
+        )
 
-        self.filename = splits[mask].index.values
-        self.identity = torch.as_tensor(rm_diff(identity)[mask].values)
-        self.bbox = torch.as_tensor(rm_diff(bbox)[mask].values)
-        self.landmarks_align = torch.as_tensor(rm_diff(landmarks_align)[mask].values)
-        self.attr = torch.as_tensor(rm_diff(attr)[mask].values)
-        self.attr = (self.attr + 1) // 2  # map from {-1, 1} to {0, 1}
-        self.attr_names = list(attr.columns)
+        # For each split, consturct a mask and create a correspondign dataset.
+        for split in split_map:
+            if stage == "fit" and split == "test":
+                continue
+            elif stage == "test" and split in ["train", "valid"]:
+                continue
+
+            mask = splits[1] == split_map[split]
+
+            filenames = splits[mask].index.values
+            identities_ = torch.as_tensor(rm_diff(identities)[mask].values)
+            bboxes_ = torch.as_tensor(rm_diff(bboxes)[mask].values)
+            landmarks_aligns_ = torch.as_tensor(rm_diff(landmarks_aligns)[mask].values)
+            attrs_ = torch.as_tensor(rm_diff(attrs)[mask].values)
+            attrs_ = (attrs_ + 1) // 2  # map from {-1, 1} to {0, 1}
+
+            assert isinstance(attrs_, torch.Tensor)
+            attrs_ = attrs_[:, selected_attribute_indexs]
+
+            if split == "train":
+                transform = self.train_transforms
+            elif split == "valid":
+                transform = self.val_transforms
+            elif split == "test":
+                transform = self.test_transforms
+            else:
+                raise ValueError()
+
+            split_dataset = CelebADataset(
+                os.path.join(self.data_dir, self.image_dir),
+                self.target_type,
+                transform,
+                filenames,
+                identities_,
+                bboxes_,
+                landmarks_aligns_,
+                attrs_,
+                attr_names,
+            )
+
+            if split == "train":
+                self.train = split_dataset
+            elif split == "valid":
+                self.valid = split_dataset
+            elif split == "test":
+                self.test = split_dataset
 
     @staticmethod
     def replace_etx(ext: str, val: str) -> str:
         return val.split(".")[0] + "." + ext
 
-    def __getitem__(self, index: int) -> Tuple[Any, Any]:
+
+class CelebADataset(Dataset):
+    def __init__(
+        self,
+        data_dir: str,
+        target_type: List[str],
+        transform: transforms.Compose,
+        filenames: pandas.Series,
+        identities: torch.Tensor,
+        bboxes: torch.Tensor,
+        landmarks_aligns: torch.Tensor,
+        attributes: torch.Tensor,
+        attribute_names: List[str],
+    ) -> None:
+        super().__init__()
+        self.data_dir = data_dir
+        self.target_type = target_type
+        self.transform = transform
+        self.filenames = filenames
+        self.identities = identities
+        self.bboxes = bboxes
+        self.landmarks_aligns = landmarks_aligns
+        self.attributes = attributes
+        self.attribute_names = attribute_names
+
+    def __len__(self):
+        return len(self.filenames)
+
+    def __getitem__(self, index):
         X = PIL.Image.open(  # type: ignore
-            os.path.join(
-                self.root, self.base_folder, self.image_dir, self.filename[index]
-            )
+            os.path.join(self.data_dir, self.filenames[index])  # type: ignore
         )
 
         target: Any = []
         for t in self.target_type:
             if t == "attr":
-                target.append(self.attr[index, :])
+                target.append(self.attributes[index, :])
             elif t == "identity":
-                target.append(self.identity[index, 0])
+                target.append(self.identities[index, 0])
             elif t == "bbox":
-                target.append(self.bbox[index, :])
+                target.append(self.bboxes[index, :])
             elif t == "landmarks":
-                target.append(self.landmarks_align[index, :])
+                target.append(self.landmarks_aligns[index, :])
             else:
                 raise ValueError('Target type "{}" is not recognized.'.format(t))
 
         if self.transform is not None:
             X = self.transform(X)
 
-        if target:
-            target = tuple(target) if len(target) > 1 else target[0]
-
-            if self.target_transform is not None:
-                target = self.target_transform(target)
-        else:
-            target = None
-
-        return X, target
-
-    def __len__(self) -> int:
-        return len(self.attr)
+        return X, tuple(target)
