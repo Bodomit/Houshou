@@ -120,7 +120,7 @@ class VGGFace2Tests(unittest.TestCase):
         self.dataset_module = VGGFace2(
             self.data_dir, self.batch_size, 1000, ["Male", "Bangs"]
         )
-        self.dataset_module.setup("test")
+        self.dataset_module.setup(None)
 
     def test_get_val_set_classes(self):
         classes = set(["1", "2", "3", "4", "5", "6", "7", "8", "9", "10"])
