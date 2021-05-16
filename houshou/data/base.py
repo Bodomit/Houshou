@@ -32,6 +32,8 @@ class TripletsAttributeDataModule(pl.LightningDataModule):
         self.attribute = attribute
         self.target_type = target_type
 
+        self.num_workers = 4
+
     @property
     def batch_size(self):
         return self._batch_size
@@ -83,17 +85,23 @@ class TripletsAttributeDataModule(pl.LightningDataModule):
 
     def train_dataloader(self) -> DataLoader:
         assert self.train
-        train = DataLoader(self.train, batch_sampler=self.train_sampler, num_workers=4)
+        train = DataLoader(
+            self.train, batch_sampler=self.train_sampler, num_workers=self.num_workers
+        )
         return train
 
     def val_dataloader(self) -> DataLoader:
         assert self.valid
-        valid = DataLoader(self.valid, batch_sampler=self.valid_sampler, num_workers=4)
+        valid = DataLoader(
+            self.valid, batch_sampler=self.valid_sampler, num_workers=self.num_workers
+        )
         return valid
 
     def test_dataloader(self) -> DataLoader:
         assert self.test
-        test = DataLoader(self.test, batch_sampler=self.test_sampler, num_workers=4)
+        test = DataLoader(
+            self.test, batch_sampler=self.test_sampler, num_workers=self.num_workers
+        )
         return test
 
     @staticmethod
