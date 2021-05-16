@@ -59,7 +59,13 @@ model:
   loss: null
   lambda_value: 0
   learning_rate: 0.01
-  verifier: null
+  verifier:
+    class_path: houshou.metrics.CVThresholdingVerifier
+    init_args:
+      batch_size: 512
+      seed: 42
+      n_splits: 10
+
 data:
   class_path: houshou.data.CelebA
   init_args:

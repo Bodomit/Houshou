@@ -2,7 +2,6 @@ model:
   loss: SEMIHARD_CROSSENTROPY
   lambda_value: 0.5
   learning_rate: 0.01
-  verifier: null
 data:
   class_path: houshou.data.CelebA
   init_args:

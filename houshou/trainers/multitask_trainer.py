@@ -1,14 +1,15 @@
-from houshou.models import MultiTaskTrainingModel
 import torch
 import torch.nn.functional as F
 import pytorch_lightning as pl
 
+from torch.utils.data.dataloader import DataLoader
 from torchmetrics.classification import Accuracy, Precision, Recall, F1
 from torchmetrics.classification import ConfusionMatrix
 from torchmetrics.collections import MetricCollection
 
 from houshou.losses import LOSS, get_loss
-from houshou.metrics import CVThresholdingVerifier, Verifier
+from houshou.metrics import CVThresholdingVerifier
+from houshou.models import MultiTaskTrainingModel
 
 from typing import Any, List, Optional, Tuple, Dict
 
@@ -19,7 +20,7 @@ class MultitaskTrainer(pl.LightningModule):
         loss: str,
         lambda_value: float,
         learning_rate: float,
-        verifier: Optional[CVThresholdingVerifier] = None,
+        verifier: CVThresholdingVerifier,
         **kwargs,
     ) -> None:
         super().__init__()
@@ -57,6 +58,12 @@ class MultitaskTrainer(pl.LightningModule):
         MultiTaskTrainingModel.add_model_specific_args(parent_parser)
 
         return parent_parser
+
+    def on_fit_start(self) -> None:
+        if self.verifier is not None:
+            val_dataloader = self.val_dataloader()
+            assert isinstance(val_dataloader, DataLoader)
+            self.verifier.setup(val_dataloader)
 
     def training_step(self, batch, batch_idx):
         xb, (yb, ab) = batch
@@ -136,9 +143,6 @@ class MultitaskTrainer(pl.LightningModule):
     def configure_optimizers(self):
         optimizer = torch.optim.Adam(self.parameters(), lr=self.learning_rate)
         return optimizer
-
-    def train_dataloader(self) -> Any:
-        return super().train_dataloader()
 
     def get_totalloss_with_sublosses(
         self,

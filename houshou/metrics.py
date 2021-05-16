@@ -16,11 +16,12 @@ from .common import AnnotatedSample, Label, Pair, ROCCurve
 
 
 class Verifier:
-    def __init__(self, dataset: Dataset, batch_size: int, seed: int):
+    def __init__(self, batch_size: int, seed: int):
         self.batch_size = batch_size
         self.rnd = np.random.RandomState(seed)
 
-        samples, data_map = self._load_data(dataset)
+    def setup(self, dataloader: DataLoader):
+        samples, data_map = self._load_data(dataloader)
         samples_per_label = self.get_samples_per_label(samples)
         matching_pairs = self.get_matching_pairs(samples_per_label)
         unmatching_pairs = self.get_unmatching_pairs(
@@ -38,23 +39,22 @@ class Verifier:
 
         datamap_dataset = DataMapDataset(data_map)
         self.datamap_dataloader = DataLoader(
-            datamap_dataset, batch_size=batch_size, num_workers=4, pin_memory=True
+            datamap_dataset, batch_size=self.batch_size, num_workers=4, pin_memory=True
         )
 
     @staticmethod
     def _load_data(
-        dataset: Dataset,
+        dataloader: DataLoader,
     ) -> Tuple[Set[AnnotatedSample], Dict[int, np.ndarray]]:
 
         samples: Set[AnnotatedSample] = set()
         data_map: Dict[int, np.ndarray] = {}
 
-        dataloader = DataLoader(dataset, num_workers=4, pin_memory=True)
-
-        for d, (l, a) in dataloader:
-            key = len(data_map)
-            data_map[key] = d
-            samples.add((key, int(l), int(a)))
+        for db, (lb, ab) in dataloader:
+            for d, l, a in zip(db, lb, ab):
+                key = len(data_map)
+                data_map[key] = d
+                samples.add((key, int(l), int(a)))
 
         return samples, data_map
 
@@ -199,12 +199,11 @@ class Verifier:
 class CVThresholdingVerifier(Verifier):
     def __init__(
         self,
-        dataset: Dataset,
         batch_size: int,
         seed: int = 42,
         n_splits=10,
     ):
-        super().__init__(dataset, batch_size, seed)
+        super().__init__(batch_size, seed)
         self.n_splits = n_splits
 
     def cv_thresholding_verification(
