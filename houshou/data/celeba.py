@@ -16,25 +16,16 @@ from .base import TripletsAttributeDataModule
 class CelebA(TripletsAttributeDataModule):
     def __init__(
         self,
-        data_dir: str = None,
-        batch_size: int = None,
-        buffer_size: int = None,
-        selected_attributes: List[str] = None,
-        target_type: List[str] = ["identity", "attr"],
+        data_dir: str,
+        batch_size: int,
+        buffer_size: int,
+        attribute: List[str],
         use_png=True,
+        **kwargs
     ):
-        assert data_dir
-        assert batch_size
-        assert buffer_size
-        assert selected_attributes
-
-        super().__init__(batch_size, buffer_size)
+        super().__init__(data_dir, batch_size, buffer_size, attribute, **kwargs)
 
         # Store attributes.
-        self.data_dir = data_dir
-        self.batch_size = batch_size
-        self.selected_attributes = selected_attributes
-        self.target_type = target_type
         self.image_dir = "img_align_celeba_png" if use_png else "img_align_celeba"
         self.ext = "png" if use_png else "jpg"
 
@@ -131,9 +122,7 @@ class CelebA(TripletsAttributeDataModule):
 
         # Get the attribute names and coresponding indexes.
         attr_names = list(attrs.columns)
-        selected_attribute_indexs = self.get_indexes(
-            attr_names, self.selected_attributes
-        )
+        selected_attribute_indexs = self.get_indexes(attr_names, self.attribute)
 
         # For each split, consturct a mask and create a correspondign dataset.
         for split in split_map:
@@ -181,6 +170,8 @@ class CelebA(TripletsAttributeDataModule):
                 self.valid = split_dataset
             elif split == "test":
                 self.test = split_dataset
+
+        super().setup(stage)
 
     @staticmethod
     def replace_etx(ext: str, val: str) -> str:

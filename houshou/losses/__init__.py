@@ -7,6 +7,9 @@ import houshou.losses.semihard_triplet_miner as stm
 class LOSS(Enum):
     SEMIHARD_CROSSENTROPY = auto()
 
+    def __str__(self) -> str:
+        return self.name
+
 
 def get_loss(loss: LOSS, **kwargs) -> SemiHardTripletMiner:
     if loss == LOSS.SEMIHARD_CROSSENTROPY:

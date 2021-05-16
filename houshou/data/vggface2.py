@@ -68,26 +68,23 @@ class VGGFace2Dataset(Dataset):
 class VGGFace2(TripletsAttributeDataModule):
     def __init__(
         self,
-        data_dir: str = None,
-        batch_size: int = None,
-        buffer_size: int = None,
-        selected_attributes: List[str] = None,
-        target_type: List[str] = ["identity", "attr"],
+        data_dir: str,
+        batch_size: int,
+        buffer_size: int,
+        attribute: List[str],
         valid_split=0.05,
         valid_split_seed=42,
+        **kwargs,
     ):
-        assert data_dir
-        assert batch_size
-        assert buffer_size
-        assert selected_attributes
-
-        super().__init__(batch_size, buffer_size)
+        super().__init__(
+            data_dir,
+            batch_size,
+            buffer_size,
+            attribute,
+            **kwargs,
+        )
 
         # Store attributes.
-        self.data_dir = data_dir
-        self.batch_size = batch_size
-        self.selected_attributes = selected_attributes
-        self.target_type = target_type
         self.valid_split = valid_split
         self.valid_split_seed = valid_split_seed
 
@@ -114,7 +111,7 @@ class VGGFace2(TripletsAttributeDataModule):
         attributes = pandas.read_csv(  # type: ignore
             os.path.join(self.data_dir, "MAAD_Face.csv"),
             index_col=0,
-            usecols=["Filename"] + self.selected_attributes,
+            usecols=["Filename"] + self.attribute,
         )
 
         # Clip the attributes to boolean values.
@@ -132,6 +129,8 @@ class VGGFace2(TripletsAttributeDataModule):
 
         if stage is None or stage == "test":
             self.test = self._process_test(attributes)
+
+        super().setup(stage)
 
     def _process_train_valid(
         self, attributes: pandas.DataFrame
@@ -244,9 +243,7 @@ class VGGFace2(TripletsAttributeDataModule):
         attr_names = list(attributes.columns)
 
         # Get the indexes for the specified columns.
-        selected_attribute_indexs = self.get_indexes(
-            attr_names, self.selected_attributes
-        )
+        selected_attribute_indexs = self.get_indexes(attr_names, self.attribute)
         attributes_ = attributes_[:, selected_attribute_indexs]
 
         # One last sanity check

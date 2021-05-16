@@ -41,8 +41,18 @@ class TripletBatchRandomSampler(Sampler[List[int]]):
         buffer = []
         real_idx = 0
 
+        # Set buffer to at least match the batch size.
+        if self.buffer_size < self.batch_size:
+            msg = f"buffer_size {self.buffer_size} is smaller than "
+            msg += f"the batch_size {self.batch_size}. "
+            msg += f"Increasing buffer_size to {self.batch_size}."
+            warnings.warn(msg)
+            max_buffer_size = self.batch_size
+        else:
+            max_buffer_size = self.buffer_size
+
         # Pre-populate the buffer.
-        while len(buffer) < self.buffer_size:
+        while len(buffer) < max_buffer_size:
             buffer.append(identity_map[real_idx])
             real_idx += 1
 
@@ -84,7 +94,7 @@ class TripletBatchRandomSampler(Sampler[List[int]]):
                         + str(self.max_batch_retry)
                         + ". Stopping Sampling early..."
                     )
-                    warnings(warning_str)
+                    warnings.warn(warning_str)
                     return
 
             # Remove the indexs from the buffer.
@@ -102,7 +112,7 @@ class TripletBatchRandomSampler(Sampler[List[int]]):
 
             try:
                 # Replenish the buffer.
-                while len(buffer) < self.buffer_size:
+                while len(buffer) < max_buffer_size:
                     buffer.append(identity_map[real_idx])
                     real_idx += 1
             except IndexError:
