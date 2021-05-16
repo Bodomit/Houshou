@@ -1,37 +1,30 @@
+from torch.utils.data.dataloader import DataLoader
+from houshou.data.base import TripletsAttributeDataModule
+from houshou.data.celeba import CelebA
+from houshou.data.vggface2 import VGGFace2
 import os
-import sys
 from logging import warning
 
-from functools import partial
+from argparse import ArgumentParser
 
-from torch.utils.data import DataLoader
-from torchvision import transforms
 import pytorch_lightning as pl
 from pytorch_lightning import loggers as pl_loggers
+from pytorch_lightning.trainer import Trainer
 
-import houshou.utils as utils
 from houshou.losses import LOSS, get_loss
 from houshou.models import MultiTaskTrainingModel
 from houshou.trainers import MultitaskTrainer
-from houshou.data import DATASET, get_dataset_module, TripletBatchRandomSampler
+from houshou.data import DATASET, get_dataset_module
 from houshou.metrics import CVThresholdingVerifier
 
-ROOT_RESULTS_DIR = utils.parse_root_results_directory_argument(sys.argv[1::])
-SACRED_DIR = os.path.join(ROOT_RESULTS_DIR, "sacred")
-
-# Create experiment.
-ex = Experiment("houshou")
-ex.captured_out_filter = apply_backspaces_and_linefeeds  # type: ignore
-filestorage_observer = FileStorageObserver(SACRED_DIR)
-ex.observers.append(filestorage_observer)
+# Seed everything for reproducability.
+pl.seed_everything(42, workers=True)
 
 
-@ex.named_config
 def sh_multitask():
     loss = LOSS.SEMIHARD_CROSSENTROPY
 
 
-@ex.config
 def default_config():
     max_epochs = 50
     batch_size = 256
@@ -52,90 +45,54 @@ def create_results_dir(results_directory: str) -> None:
             raise
 
 
-def construct_train_dataloader(
-    dataset,
-    batch_size: int,
-    num_workers: int,
-    drop_last: bool,
-    shuffle_buffer_size: int,
-):
-    return DataLoader(
-        dataset,
-        num_workers=num_workers,
-        batch_sampler=TripletBatchRandomSampler(
-            dataset, batch_size, drop_last, shuffle_buffer_size
-        ),
-        pin_memory=True,
-    )
-
-
-@ex.automain
-def run(
-    results_directory: str,
-    dataset_root_directory: str,
-    lambda_value: float,
-    max_epochs: int,
-    batch_size: int,
-    dataset: DATASET,
-    dataset_attribute: str,
-    loss: LOSS,
-    shuffle_buffer_size: int,
-    drop_last_batch: bool,
-):
+def main(args):
+    dict_args = vars(args)
 
     # Create the results directory: debug dir overwrites.
-    create_results_dir(results_directory)
-
-    # Data
-    transform = transforms.Compose(
-        [
-            transforms.ToTensor(),  # Reads images scales to [0, 1]
-            transforms.Lambda(lambda x: x * 2 - 1),  # Change range to [-1, 1]
-            transforms.Resize((160, 160)),
-            transforms.RandomHorizontalFlip(p=0.5),
-        ]
-    )
-
-    get_dataset_ = partial(
-        get_dataset_module,
-        dataset,
-        root=dataset_root_directory,
-        selected_attributes=[dataset_attribute],
-    )
-    train_dataset = get_dataset_(split="train", transform=transform)
-    valid_dataset = get_dataset_(split="valid", transform=transform)
-
-    train_loader = construct_train_dataloader(
-        train_dataset, batch_size, 4, drop_last_batch, shuffle_buffer_size
-    )
-    valid_loader = DataLoader(
-        valid_dataset, batch_size=batch_size, num_workers=4, pin_memory=True
-    )
+    # create_results_dir(args.results_directory)
 
     # Logger
-    loggers = [
-        pl_loggers.TestTubeLogger(os.path.join(results_directory, "tt_logs")),
-        pl_loggers.CSVLogger(os.path.join(results_directory, "csv_logs")),
-    ]
+    # loggers = [
+    #    pl_loggers.TestTubeLogger(os.path.join(args.results_directory, "tt_logs")),
+    #    pl_loggers.CSVLogger(os.path.join(args.results_directory, "csv_logs")),
+    # ]
 
-    # Loss
-    loss_ = get_loss(loss)
+    # Get the datamodule.
+    datamodule = get_dataset_module(**dict_args)
 
     # Verifier.
-    verifier = CVThresholdingVerifier(valid_dataset, batch_size)
+    verifier = None  # CVThresholdingVerifier(datamodule.valid, args.batch_size)
 
     # Model
-    model = MultiTaskTrainingModel()
-    system = MultitaskTrainer(model, loss_, lambda_value, verifier)
+    system = MultitaskTrainer(verifier=verifier, **dict_args)
 
     # Training
-    trainer = pl.Trainer(
-        gpus=1,
-        max_epochs=max_epochs,
-        logger=loggers,
-        default_root_dir=results_directory,
-        auto_select_gpus=True,
-        fast_dev_run=True,
-        weights_summary="full",
+    trainer = pl.Trainer.from_argparse_args(args)
+    trainer.tune(system, datamodule=datamodule)
+    trainer.fit(system, datamodule=datamodule)
+
+
+if __name__ == "__main__":
+    parser = ArgumentParser()
+
+    # PROGRAM level args.
+
+    # MODEL specific args.
+    parser = MultitaskTrainer.add_model_specific_args(parser)
+
+    # DATASET specific args.
+    datasetparser = parser.add_argument_group("Dataset")
+    datasetparser.add_argument(
+        "--dataset", type=lambda d: DATASET[d], choices=list(DATASET), required=True
     )
-    trainer.fit(system, train_loader, valid_loader)
+    datasetparser = TripletsAttributeDataModule.add_data_specific_args(datasetparser)
+    parser = VGGFace2.add_data_specific_args(parser)
+    parser = CelebA.add_data_specific_args(parser)
+
+    # TRAINER args.
+    parser = Trainer.add_argparse_args(parser)
+
+    # Parse the args.
+    args = parser.parse_args()
+
+    main(args)

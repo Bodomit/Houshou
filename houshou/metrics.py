@@ -1,5 +1,4 @@
 from collections import defaultdict
-from houshou.data.datasets import AttributeDataset
 from typing import Any, Dict, List, Optional, Set, Tuple
 import itertools
 
@@ -17,7 +16,7 @@ from .common import AnnotatedSample, Label, Pair, ROCCurve
 
 
 class Verifier:
-    def __init__(self, dataset: AttributeDataset, batch_size: int, seed: int):
+    def __init__(self, dataset: Dataset, batch_size: int, seed: int):
         self.batch_size = batch_size
         self.rnd = np.random.RandomState(seed)
 
@@ -44,7 +43,7 @@ class Verifier:
 
     @staticmethod
     def _load_data(
-        dataset: AttributeDataset,
+        dataset: Dataset,
     ) -> Tuple[Set[AnnotatedSample], Dict[int, np.ndarray]]:
 
         samples: Set[AnnotatedSample] = set()
@@ -200,7 +199,7 @@ class Verifier:
 class CVThresholdingVerifier(Verifier):
     def __init__(
         self,
-        dataset: AttributeDataset,
+        dataset: Dataset,
         batch_size: int,
         seed: int = 42,
         n_splits=10,
