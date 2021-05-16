@@ -1,0 +1,13 @@
+model:
+  loss: SEMIHARD_CROSSENTROPY
+  lambda_value: 0.5
+  learning_rate: 0.01
+  verifier: null
+data:
+  class_path: houshou.data.CelebA
+  init_args:
+    data_dir: ~/datasets/CelebA_MTCNN
+    batch_size: 512
+    buffer_size: 5000
+    attribute:
+      - Male

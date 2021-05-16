@@ -82,9 +82,7 @@ class MultiTaskTrainingModel(pl.LightningModule):
         parser.add_argument(
             "--attribute-model-path", type=str, default=None, metavar="PATH"
         )
-        parser.add_argument(
-            "--reverse-attribute-gradient", type=bool, default=False, metavar="BOOL"
-        )
+        parser.add_argument("--reverse-attribute-gradient", action="store_true")
 
         parser = FeatureModel.add_model_specific_args(parent_parser)
         parser = AttributeExtractionModel.add_model_specific_args(parent_parser)

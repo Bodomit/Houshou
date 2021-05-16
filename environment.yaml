@@ -20,7 +20,7 @@ dependencies:
     - facenet-pytorch
     - sacred
     - namegenerator
-    - pyyaml
+    - ruyaml
     - pytorch-lightning
     - torchmetrics
     - test-tube

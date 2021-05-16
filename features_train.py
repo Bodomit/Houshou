@@ -1,37 +1,20 @@
-from torch.utils.data.dataloader import DataLoader
-from houshou.data.base import TripletsAttributeDataModule
-from houshou.data.celeba import CelebA
-from houshou.data.vggface2 import VGGFace2
 import os
 from logging import warning
 
+# from jsonargparse import ArgumentParser, ActionConfigFile
 from argparse import ArgumentParser
 
 import pytorch_lightning as pl
 from pytorch_lightning import loggers as pl_loggers
 from pytorch_lightning.trainer import Trainer
 
-from houshou.losses import LOSS, get_loss
-from houshou.models import MultiTaskTrainingModel
 from houshou.trainers import MultitaskTrainer
 from houshou.data import DATASET, get_dataset_module
+from houshou.data import TripletsAttributeDataModule, CelebA, VGGFace2
 from houshou.metrics import CVThresholdingVerifier
 
 # Seed everything for reproducability.
 pl.seed_everything(42, workers=True)
-
-
-def sh_multitask():
-    loss = LOSS.SEMIHARD_CROSSENTROPY
-
-
-def default_config():
-    max_epochs = 50
-    batch_size = 256
-    drop_last_batch = True
-    shuffle_buffer_size = 1000
-    dataset = DATASET.CELEBA
-    dataset_attribute = "Male"
 
 
 def create_results_dir(results_directory: str) -> None:
@@ -66,33 +49,36 @@ def main(args):
     # Model
     system = MultitaskTrainer(verifier=verifier, **dict_args)
 
+    # Callbacks
+
     # Training
     trainer = pl.Trainer.from_argparse_args(args)
-    trainer.tune(system, datamodule=datamodule)
+
+    datamodule.num_workers = 0
     trainer.fit(system, datamodule=datamodule)
 
 
 if __name__ == "__main__":
-    parser = ArgumentParser()
+    parentparser = ArgumentParser()
+    # parentparser.add_argument("--cfg", action=ActionConfigFile)
 
     # PROGRAM level args.
+    programparser = parentparser.add_argument_group("Program")
 
     # MODEL specific args.
-    parser = MultitaskTrainer.add_model_specific_args(parser)
+    parentparser = MultitaskTrainer.add_model_specific_args(parentparser)
 
     # DATASET specific args.
-    datasetparser = parser.add_argument_group("Dataset")
-    datasetparser.add_argument(
-        "--dataset", type=lambda d: DATASET[d], choices=list(DATASET), required=True
-    )
+    datasetparser = parentparser.add_argument_group("Dataset")
+    datasetparser.add_argument("--dataset", type=DATASET, required=True)
     datasetparser = TripletsAttributeDataModule.add_data_specific_args(datasetparser)
-    parser = VGGFace2.add_data_specific_args(parser)
-    parser = CelebA.add_data_specific_args(parser)
+    parentparser = VGGFace2.add_data_specific_args(parentparser)
+    parentparser = CelebA.add_data_specific_args(parentparser)
 
     # TRAINER args.
-    parser = Trainer.add_argparse_args(parser)
+    parentparser = Trainer.add_argparse_args(parentparser)
 
     # Parse the args.
-    args = parser.parse_args()
+    args = parentparser.parse_args()
 
     main(args)

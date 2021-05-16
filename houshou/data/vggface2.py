@@ -72,7 +72,6 @@ class VGGFace2(TripletsAttributeDataModule):
         batch_size: int,
         buffer_size: int,
         attribute: List[str],
-        target_type: List[str] = ["identity", "attr"],
         valid_split=0.05,
         valid_split_seed=42,
         **kwargs,
@@ -82,7 +81,6 @@ class VGGFace2(TripletsAttributeDataModule):
             batch_size,
             buffer_size,
             attribute,
-            target_type,
             **kwargs,
         )
 

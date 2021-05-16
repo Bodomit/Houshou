@@ -6,7 +6,7 @@ import pytorch_lightning as pl
 
 from .celeba import CelebA
 from .vggface2 import VGGFace2
-from .samplers import TripletBatchRandomSampler
+from .base import TripletsAttributeDataModule
 
 
 class DATASET(Enum):

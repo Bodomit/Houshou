@@ -20,13 +20,10 @@ class CelebA(TripletsAttributeDataModule):
         batch_size: int,
         buffer_size: int,
         attribute: List[str],
-        target_type: List[str] = ["identity", "attr"],
         use_png=True,
         **kwargs
     ):
-        super().__init__(
-            data_dir, batch_size, buffer_size, attribute, target_type, **kwargs
-        )
+        super().__init__(data_dir, batch_size, buffer_size, attribute, **kwargs)
 
         # Store attributes.
         self.image_dir = "img_align_celeba_png" if use_png else "img_align_celeba"

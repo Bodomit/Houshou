@@ -16,7 +16,7 @@ from typing import Any, List, Optional, Tuple, Dict
 class MultitaskTrainer(pl.LightningModule):
     def __init__(
         self,
-        loss: LOSS,
+        loss: str,
         lambda_value: float,
         learning_rate: float,
         verifier: Optional[CVThresholdingVerifier] = None,
@@ -26,7 +26,7 @@ class MultitaskTrainer(pl.LightningModule):
         self.save_hyperparameters("loss", "lambda_value", "learning_rate")
 
         self.model = MultiTaskTrainingModel(**kwargs)
-        self.loss = get_loss(loss)
+        self.loss = get_loss(LOSS[loss])
         self.lambda_value = lambda_value
         self.learning_rate = learning_rate
         self.verifier = verifier
@@ -48,9 +48,7 @@ class MultitaskTrainer(pl.LightningModule):
     @staticmethod
     def add_model_specific_args(parent_parser):
         parser = parent_parser.add_argument_group("MultitaskTrainer")
-        parser.add_argument(
-            "--loss", type=lambda loss: LOSS[loss], choices=list(LOSS), required=True
-        )
+        parser.add_argument("--loss", type=LOSS, required=True)
         parser.add_argument(
             "--lambda-value", type=float, metavar="FLOAT", required=True
         )
