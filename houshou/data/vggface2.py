@@ -104,13 +104,6 @@ class VGGFace2(TripletsAttributeDataModule):
 
         self.dims = (3, 160, 160)
 
-    @staticmethod
-    def add_data_specific_args(parent_parser):
-        parser = parent_parser.add_argument_group("VGGFace2")
-        parser.add_argument("--valid-split", type=float, default=0.05, metavar="FLOAT")
-        parser.add_argument("--valid-split-seed", type=int, default=42, metavar="N")
-        return parent_parser
-
     def setup(self, stage: Optional[str]) -> None:
 
         # Read the attributes. Usecols is specified to reduce memory usage

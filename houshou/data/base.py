@@ -62,18 +62,6 @@ class TripletsAttributeDataModule(pl.LightningDataModule):
         if self.test_sampler:
             self.test_sampler.batch_size = batch_size
 
-    @staticmethod
-    def add_data_specific_args(parent_parser):
-        parent_parser.add_argument(
-            "--data-dir", type=str, metavar="PATH", required=True
-        )
-        parent_parser.add_argument("--batch-size", type=int, default=256, metavar="N")
-        parent_parser.add_argument("--buffer-size", type=int, default=1000, metavar="N")
-        parent_parser.add_argument(
-            "--attribute", "-a", action="append", required=True, metavar="STR"
-        )
-        return parent_parser
-
     def setup(self, stage: Optional[str]) -> None:
         super().setup(stage=stage)
 

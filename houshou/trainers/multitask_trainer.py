@@ -46,19 +46,6 @@ class MultitaskTrainer(pl.LightningModule):
         self.train_metrics = metrics.clone(prefix="train_")
         self.valid_metrics = metrics.clone(prefix="valid_")
 
-    @staticmethod
-    def add_model_specific_args(parent_parser):
-        parser = parent_parser.add_argument_group("MultitaskTrainer")
-        parser.add_argument("--loss", type=LOSS, required=True)
-        parser.add_argument(
-            "--lambda-value", type=float, metavar="FLOAT", required=True
-        )
-        parser.add_argument("--learning-rate", type=float, default=0.01)
-
-        MultiTaskTrainingModel.add_model_specific_args(parent_parser)
-
-        return parent_parser
-
     def on_fit_start(self) -> None:
         if self.verifier is not None:
             val_dataloader = self.val_dataloader()

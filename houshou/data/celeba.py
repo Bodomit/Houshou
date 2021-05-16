@@ -45,12 +45,6 @@ class CelebA(TripletsAttributeDataModule):
 
         self.dims = (3, 160, 160)
 
-    @staticmethod
-    def add_data_specific_args(parent_parser):
-        parser = parent_parser.add_argument_group("CelebA")
-        parser.add_argument("--use-png", action="store_true")
-        return parent_parser
-
     def setup(self, stage: Optional[str]) -> None:
 
         fn = partial(os.path.join, self.data_dir)

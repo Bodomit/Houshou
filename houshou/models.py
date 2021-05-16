@@ -15,12 +15,6 @@ class FeatureModel(pl.LightningModule):
             pretrained=None, classify=False, num_classes=None, dropout_prob=dropout_prob
         )
 
-    @staticmethod
-    def add_model_specific_args(parent_parser):
-        parser = parent_parser.add_argument_group("FeatureModel")
-        parser.add_argument("--dropout-prob", type=float, default=0.6, metavar="FLOAT")
-        return parent_parser
-
     def forward(self, x):
         return self.resnet(x)
 
@@ -37,12 +31,6 @@ class AttributeExtractionModel(pl.LightningModule):
             nn.LeakyReLU(),
             nn.Linear(32, n_outputs),
         )
-
-    @staticmethod
-    def add_model_specific_args(parent_parser):
-        parser = parent_parser.add_argument_group("AttributeExtractionModel")
-        parser.add_argument("--n-outputs", type=int, default=2, metavar="N1")
-        return parent_parser
 
     def forward(self, x):
         return self.full_model(x)
@@ -72,22 +60,6 @@ class MultiTaskTrainingModel(pl.LightningModule):
             self.attribute_model = AttributeExtractionModel(**kwargs)
 
         self.reverse_attribute_gradient = reverse_attribute_gradient
-
-    @staticmethod
-    def add_model_specific_args(parent_parser):
-        parser = parent_parser.add_argument_group("MultiTaskTrainingModel")
-        parser.add_argument(
-            "--feature-model-path", type=str, default=None, metavar="PATH"
-        )
-        parser.add_argument(
-            "--attribute-model-path", type=str, default=None, metavar="PATH"
-        )
-        parser.add_argument("--reverse-attribute-gradient", action="store_true")
-
-        parser = FeatureModel.add_model_specific_args(parent_parser)
-        parser = AttributeExtractionModel.add_model_specific_args(parent_parser)
-
-        return parent_parser
 
     def forward(self, x):
         features = self.feature_model(x)
