@@ -1,3 +1,5 @@
+import warnings
+
 from torch.utils.data import DataLoader
 import pytorch_lightning as pl
 
@@ -7,6 +9,9 @@ from typing import List, Optional
 
 
 class TripletsAttributeDataModule(pl.LightningDataModule):
+
+    MIN_BATCH_SIZE = 16
+
     def __init__(
         self,
         data_dir: str,
@@ -40,6 +45,13 @@ class TripletsAttributeDataModule(pl.LightningDataModule):
 
     @batch_size.setter
     def batch_size(self, batch_size: int):
+
+        if batch_size < self.MIN_BATCH_SIZE:
+            msg = f"batch_size {batch_size} below minimum of {self.MIN_BATCH_SIZE}. "
+            msg += f"Setting batch_size to {self.MIN_BATCH_SIZE}"
+            warnings.warn(msg)
+            batch_size = self.MIN_BATCH_SIZE
+
         self._batch_size = batch_size
 
         if self.train_sampler:
