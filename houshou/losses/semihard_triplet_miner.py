@@ -68,7 +68,7 @@ class SemiHardTripletMiner(TripletMiner):
         self,
         margin: float = 1.0,
         lambda_value: float = 0.0,
-        penalty_loss_name: str = "penalty",
+        penalty_loss_name: str = "attribute",
         **kwargs
     ):
         super().__init__()

@@ -68,6 +68,8 @@ class MultitaskTrainer(pl.LightningModule):
 
     def training_step(self, batch, batch_idx):
         xb, (yb, ab) = batch
+        ab = ab.squeeze()
+
         embeddings, attribute_pred = self.model(xb)
         total_loss, sub_losses = self.get_totalloss_with_sublosses(
             self.loss, yb, ab, embeddings, attribute_pred
@@ -76,12 +78,19 @@ class MultitaskTrainer(pl.LightningModule):
         self.log("loss", total_loss, on_step=True, on_epoch=True)
         self.log_dict(sub_losses, on_step=True, on_epoch=True)
 
+        metrics = self.training_step_attribute_metrics(ab, attribute_pred)
+        self.log_dict(metrics, on_step=True, on_epoch=True)
+
+        return total_loss
+
+    def training_step_attribute_metrics(
+        self, attribute: torch.Tensor, attribute_pred: torch.Tensor
+    ) -> Dict[str, Any]:
         softmaxed_attribute_pred = F.softmax(attribute_pred, dim=1)
-        metrics = self.train_metrics(softmaxed_attribute_pred, ab.squeeze())
+        metrics = self.train_metrics(softmaxed_attribute_pred, attribute.squeeze())
 
         confusion_matrix = metrics["train_ConfusionMatrix"]
         del metrics["train_ConfusionMatrix"]
-        self.log_dict(metrics, on_step=True, on_epoch=True)
 
         confusion_matrix_dict = {
             "train_true_negative": confusion_matrix[0, 0],
@@ -89,12 +98,9 @@ class MultitaskTrainer(pl.LightningModule):
             "train_false_negative": confusion_matrix[1, 0],
             "train_true_positive": confusion_matrix[1, 1],
         }
-        self.log_dict(confusion_matrix_dict)
 
-        return total_loss
-
-    def training_epoch_end(self, outputs: List[Any]) -> None:
-        pass
+        combine_metrics = metrics | confusion_matrix_dict
+        return combine_metrics
 
     def validation_step(self, batch, batch_idx):
         xb, (yb, ab) = batch
