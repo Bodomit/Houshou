@@ -1,0 +1,14 @@
+trainer:
+  default_root_dir: /home/gbrown/results/houshou/semihard_mining/0.5
+model:
+  loss: SHM_UNIFORMKLDIVERGENCE
+  lambda_value: 0.5
+  learning_rate: 0.01
+data:
+  class_path: houshou.data.VGGFace2
+  init_args:
+    data_dir: ~/datasets/vggface2_MTCNN
+    batch_size: 512
+    buffer_size: 5000
+    attribute:
+      - Male

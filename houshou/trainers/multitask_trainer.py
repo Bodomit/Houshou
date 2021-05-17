@@ -34,9 +34,9 @@ class MultitaskTrainer(pl.LightningModule):
         self.save_hyperparameters("loss", "lambda_value", "learning_rate")
 
         self.model = MultiTaskTrainingModel(**kwargs)
-        self.loss = get_loss(LOSS[loss])
         self.lambda_value = lambda_value
         self.learning_rate = learning_rate
+        self.loss = get_loss(LOSS[loss], lambda_value=self.lambda_value)
         self.verifier = verifier
 
         # Metrics
