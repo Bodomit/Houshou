@@ -137,12 +137,12 @@ class Verifier:
         features_per_batch = []
         ids_per_batch = []
         for ids, data in self.datamap_dataloader:
-            _, features = model(data.squeeze().to(device))
-            features_per_batch.append(features)
-            ids_per_batch.append(ids)
+            features, _ = model(data.to(device).squeeze())
+            features_per_batch.append(features.cpu().detach().numpy())
+            ids_per_batch.append(ids.cpu().detach().numpy())
 
-        all_features = torch.cat(features_per_batch).cpu().detach().numpy()
-        all_ids = torch.cat(ids_per_batch).cpu().detach().numpy()
+        all_features = np.concatenate(features_per_batch)
+        all_ids = np.concatenate(ids_per_batch)
         all_ids = [int(x) for x in all_ids]
 
         assert max(all_ids) + 1 == len(all_ids) == len(set(all_ids))

@@ -1,6 +1,12 @@
+import os
+import pickle
+import shutil
+from functools import partial
+
 import torch
 import torch.nn.functional as F
 import pytorch_lightning as pl
+import pandas as pd
 
 from torch.utils.data.dataloader import DataLoader
 from torchmetrics.classification import Accuracy, Precision, Recall, F1
@@ -11,7 +17,8 @@ from houshou.losses import LOSS, get_loss
 from houshou.metrics import CVThresholdingVerifier
 from houshou.models import MultiTaskTrainingModel
 
-from typing import Any, List, Optional, Tuple, Dict
+from typing import Any, List, Tuple, Dict
+from houshou.common import ROCCurve
 
 
 class MultitaskTrainer(pl.LightningModule):
@@ -47,6 +54,13 @@ class MultitaskTrainer(pl.LightningModule):
         self.valid_metrics = metrics.clone(prefix="valid_")
 
     def on_fit_start(self) -> None:
+        # Create the log directory.
+        dir = self.trainer.log_dir or self.trainer.default_root_dir
+        if self.trainer.fast_dev_run:
+            shutil.rmtree(dir)
+        os.makedirs(dir)
+
+        # Set up the verification scenario tester.
         if self.verifier is not None:
             val_dataloader = self.val_dataloader()
             assert isinstance(val_dataloader, DataLoader)
@@ -123,6 +137,48 @@ class MultitaskTrainer(pl.LightningModule):
 
             self.log("valid_auc", auc)
             self.log_dict(labelled_apap)
+
+    def on_train_end(self) -> None:
+        assert self.on_gpu
+        assert isinstance(self.device, torch.device)
+
+        (
+            metrics_rocs,
+            per_attribute_pair_metrics_rocs,
+        ) = self.verifier.cv_thresholding_verification(self.model, self.device)
+
+        val_results_path = os.path.join(
+            self.trainer.log_dir or self.trainer.default_root_dir,
+            "on_validation_end_verification",
+        )
+        os.makedirs(val_results_path, exist_ok=True)
+
+        # Save the combined cv verification results.
+        self.save_cv_verification_results(metrics_rocs, val_results_path, "_all")
+
+        # Save the attribuet pair results.
+        for ap in per_attribute_pair_metrics_rocs:
+            ap_suffix = f"_{ap[0]}_{ap[1]}"
+            self.save_cv_verification_results(
+                per_attribute_pair_metrics_rocs[ap], val_results_path, ap_suffix
+            )
+
+        # Final cleanup.
+        super().on_fit_end()
+
+    def save_cv_verification_results(
+        self,
+        metrics_rocs: Tuple[pd.DataFrame, List[ROCCurve]],
+        val_results_path: str,
+        suffix="",
+    ):
+        fn = partial(os.path.join, val_results_path)
+
+        metrics, rocs = metrics_rocs
+        metrics.to_csv(fn(f"verification{suffix}.csv"))
+
+        with open(fn(f"roc_curves{suffix}.pickle"), "wb") as outfile:
+            pickle.dump(rocs, outfile)
 
     def forward(self, x):
         return self.model(x)
