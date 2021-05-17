@@ -39,7 +39,7 @@ trainer:
   truncated_bptt_steps: null
   resume_from_checkpoint: null
   profiler: null
-  benchmark: false
+  benchmark: true
   deterministic: false
   reload_dataloaders_every_epoch: false
   auto_lr_find: false
