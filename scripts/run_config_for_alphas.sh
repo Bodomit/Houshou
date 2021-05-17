@@ -46,8 +46,6 @@ echo "GPU Stats:"
 nvidia-smi
 echo ""
 
-python -m features_train \
-    --data houshou.data.VGGFace2 \
-    --data.init_args.data_dir $VGGFACE2_DATADIR \
+srun python -m features_train \
     --trainer.default_root_dir $RESULTSDIR \
     --config $CONFIG_PATH \
