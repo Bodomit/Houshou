@@ -1,16 +1,15 @@
 seed_everything: 42
 trainer:
   logger: true
-  checkpoint_callback: true
   callbacks: null
-  default_root_dir: null
+  default_root_dir: /home/gbrown/results/houshou/
   gradient_clip_val: 0.0
   gradient_clip_algorithm: norm
   process_position: 0
   num_nodes: 1
   num_processes: 1
   gpus: 1
-  auto_select_gpus: false
+  auto_select_gpus: true
   tpu_cores: null
   log_gpu_memory: null
   progress_bar_refresh_rate: null
@@ -19,7 +18,7 @@ trainer:
   check_val_every_n_epoch: 1
   fast_dev_run: false
   accumulate_grad_batches: 1
-  max_epochs: null
+  max_epochs: 50
   min_epochs: null
   max_steps: null
   min_steps: null
@@ -55,6 +54,7 @@ trainer:
   move_metrics_to_cpu: false
   multiple_trainloader_mode: max_size_cycle
   stochastic_weight_avg: false
+
 model:
   loss: null
   lambda_value: 0

@@ -4,7 +4,6 @@ import torch.nn as nn
 from facenet_pytorch import InceptionResnetV1
 
 import pytorch_lightning as pl
-from torch.nn.functional import dropout
 
 
 class FeatureModel(pl.LightningModule):
