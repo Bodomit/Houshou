@@ -1,7 +1,5 @@
 from pytorch_lightning.utilities.cli import LightningCLI
 
-from pytorch_lightning.loggers import TestTubeLogger, CSVLogger
-
 from houshou.trainers import MultitaskTrainer
 from houshou.data import TripletsAttributeDataModule
 

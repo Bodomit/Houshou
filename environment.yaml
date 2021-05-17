@@ -18,9 +18,8 @@ dependencies:
   - pip:
     - black
     - facenet-pytorch
-    - sacred
-    - namegenerator
     - ruyaml
     - pytorch-lightning
     - torchmetrics
     - test-tube
+    - jsonargparse[signatures]
