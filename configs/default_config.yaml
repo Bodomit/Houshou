@@ -67,9 +67,9 @@ model:
       n_splits: 10
 
 data:
-  class_path: houshou.data.CelebA
+  class_path: houshou.data.TripletsAttributeDataModule
   init_args:
-    data_dir: ~/datasets/CelebA_MTCNN
+    data_dir: null
     batch_size: 512
     buffer_size: 5000
     attribute:
