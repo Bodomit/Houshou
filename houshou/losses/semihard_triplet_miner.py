@@ -170,7 +170,7 @@ class SemiHardTripletMiner(TripletMiner):
         raise NotImplementedError
 
 
-class SHTWithCategoricalCrossEntropy(SemiHardTripletMiner):
+class SHM_CategoricalCrossEntropy(SemiHardTripletMiner):
     def __init__(self, **kwargs):
         super().__init__(
             **kwargs,
