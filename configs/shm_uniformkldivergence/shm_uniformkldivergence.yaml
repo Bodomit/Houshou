@@ -1,20 +1,17 @@
 trainer:
-  default_root_dir: /home/gbrown/results/houshou/semihard_mining/0.5
+  default_root_dir: /home/gbrown/results/houshou/semihard_mining/debug
 model:
-  class_path: houshou.trainers.TwoStageMultitaskTrainer
-  init_args:
-    loss: SHM_UNIFORMKLDIVERGENCE
-    lambda_value: 0.5
-    learning_rate: 0.01
-    verifier_args:
-      batch_size: 256
-      debug: false
-      seed: 42
-      n_splits: 10
+  loss: SHM_UNIFORMKLDIVERGENCE
+  learning_rate: 0.01
+  verifier_args:
+    batch_size: 256
+    debug: false
+    seed: 42
+    n_splits: 10
 data:
   class_path: houshou.data.VGGFace2
   init_args:
-    data_dir: ~/datasets/vggface2_MTCNN
+    data_dir: vggface2_MTCNN
     batch_size: 512
     buffer_size: 5000
     attribute:

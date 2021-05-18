@@ -16,10 +16,10 @@ from .base import TripletsAttributeDataModule
 class CelebA(TripletsAttributeDataModule):
     def __init__(
         self,
-        data_dir: str,
         batch_size: int,
         buffer_size: int,
         attribute: List[str],
+        data_dir: str = "CelebA_MTCNN",
         use_png=True,
         **kwargs
     ):
