@@ -57,7 +57,7 @@ class MultitaskTrainer(pl.LightningModule):
         # Create the log directory.
         dir = self.trainer.log_dir or self.trainer.default_root_dir
         if self.trainer.fast_dev_run:
-            shutil.rmtree(dir)
+            shutil.rmtree(dir, ignore_errors=True)
         os.makedirs(dir)
 
         # Set up the verification scenario tester.

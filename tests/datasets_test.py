@@ -29,7 +29,10 @@ class CelebATests(unittest.TestCase):
         self.data_dir = os.path.join(self.root, "CelebA_MTCNN")
         self.batch_size = 2
         self.dataset_module = CelebA(
-            self.data_dir, self.batch_size, 1000, ["Male", "Bags_Under_Eyes"]
+            self.batch_size,
+            1000,
+            ["Male", "Bags_Under_Eyes"],
+            self.data_dir,
         )
         self.dataset_module.setup(None)
 
@@ -44,6 +47,7 @@ class CelebATests(unittest.TestCase):
             assert isinstance(target[0], torch.Tensor)
             assert isinstance(target[1], torch.Tensor)
             assert isinstance(target[0].item(), int)
+            assert target[1].dtype == torch.int64
             assert len(target[1]) == 2 and len(target[1].shape) == 1
             break
 
@@ -58,6 +62,7 @@ class CelebATests(unittest.TestCase):
             assert isinstance(target[0], torch.Tensor)
             assert isinstance(target[1], torch.Tensor)
             assert isinstance(target[0].item(), int)
+            assert target[1].dtype == torch.int64
             assert len(target[1]) == 2 and len(target[1].shape) == 1
             break
 
@@ -69,7 +74,7 @@ class TripletFriendlyRandomSamplerTests(unittest.TestCase):
         self.root = get_root_dir()
         self.data_dir = os.path.join(self.root, "CelebA_MTCNN")
 
-        self.dataset_module = CelebA(self.data_dir, 8, 1000, ["Male"])
+        self.dataset_module = CelebA(8, 1000, ["Male"], self.data_dir)
         self.dataset_module.setup(None)
         self.identities = self.dataset_module.train.identities
 
@@ -119,7 +124,10 @@ class VGGFace2Tests(unittest.TestCase):
         self.data_dir = os.path.join(self.root, "vggface2_MTCNN")
         self.batch_size = 2
         self.dataset_module = VGGFace2(
-            self.data_dir, self.batch_size, 1000, ["Male", "Bangs"]
+            self.batch_size,
+            1000,
+            ["Male", "Bangs"],
+            self.data_dir,
         )
         self.dataset_module.setup(None)
 
@@ -151,6 +159,7 @@ class VGGFace2Tests(unittest.TestCase):
             assert isinstance(target[0], torch.Tensor)
             assert isinstance(target[1], torch.Tensor)
             assert isinstance(target[0].item(), int)
+            assert target[1].dtype == torch.int64
             assert len(target[1]) == 2 and len(target[1].shape) == 1
             break
 
@@ -161,6 +170,7 @@ class VGGFace2Tests(unittest.TestCase):
             assert isinstance(target[0], torch.Tensor)
             assert isinstance(target[1], torch.Tensor)
             assert isinstance(target[0].item(), int)
+            assert target[1].dtype == torch.int64
             assert len(target[1]) == 2 and len(target[1].shape) == 1
             break
 
@@ -176,5 +186,6 @@ class VGGFace2Tests(unittest.TestCase):
             assert isinstance(target[0], torch.Tensor)
             assert isinstance(target[1], torch.Tensor)
             assert isinstance(target[0].item(), int)
+            assert target[1].dtype == torch.int64
             assert len(target[1]) == 2 and len(target[1].shape) == 1
             break

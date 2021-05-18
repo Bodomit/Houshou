@@ -98,15 +98,7 @@ class CelebA(TripletsAttributeDataModule):
             converters={0: replace_ext_},
         ).loc[sort_order]
 
-        # Clip the attributes to boolean values.
-        def clip(x):
-            if x <= 0:
-                return 0
-            else:
-                return 1
-
         assert isinstance(attrs, pandas.DataFrame)
-        attrs = attrs.applymap(clip).astype("bool")
 
         # Remove attribute lines that have no corresponding image.
         diff = list(sorted(set(splits.index.values) - real_image_ids))
