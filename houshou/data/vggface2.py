@@ -113,16 +113,7 @@ class VGGFace2(TripletsAttributeDataModule):
             index_col=0,
             usecols=["Filename"] + self.attribute,
         )
-
-        # Clip the attributes to boolean values.
-        def clip(x):
-            if x <= 0:
-                return 0
-            else:
-                return 1
-
         assert isinstance(attributes, pandas.DataFrame)
-        attributes = attributes.applymap(clip).astype("bool")
 
         if stage is None or stage == "fit":
             self.train, self.valid = self._process_train_valid(attributes)
@@ -240,6 +231,7 @@ class VGGFace2(TripletsAttributeDataModule):
 
         identities = torch.as_tensor([s[1] for s in samples])
         attributes_ = torch.as_tensor(attributes.values)
+        attributes_ = (attributes_ + 1) // 2  # map from {-1, 1} to {0, 1}
         attr_names = list(attributes.columns)
 
         # Get the indexes for the specified columns.
