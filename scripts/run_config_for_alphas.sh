@@ -44,5 +44,4 @@ echo ""
 python -m features_train \
     --config $CONFIG_PATH \
     --trainer.default_root_dir $RESULTSDIR \
-    --lambda_value $ALPHA
-    
+    --model.lambda_value $ALPHA

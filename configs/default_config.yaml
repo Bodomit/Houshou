@@ -56,16 +56,14 @@ trainer:
   stochastic_weight_avg: false
 
 model:
-  class_path: houshou.trainers.TwoStageMultitaskTrainer
-  init_args:
-    loss: SHM_UNIFORMKLDIVERGENCE
-    lambda_value: 0.5
-    learning_rate: 0.01
-    verifier_args:
-      batch_size: 256
-      debug: false
-      seed: 42
-      n_splits: 10
+  loss: SHM_UNIFORMKLDIVERGENCE
+  lambda_value: 0.5
+  learning_rate: 0.01
+  verifier_args:
+    batch_size: 256
+    debug: false
+    seed: 42
+    n_splits: 10
 
 data:
   class_path: houshou.data.TripletsAttributeDataModule
