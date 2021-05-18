@@ -3,6 +3,7 @@ import warnings
 
 from torch.utils.data import DataLoader
 import pytorch_lightning as pl
+import ruyaml as yaml
 
 from .samplers import TripletBatchRandomSampler
 
@@ -32,7 +33,7 @@ class TripletsAttributeDataModule(pl.LightningDataModule):
         self.valid_sampler = None
         self.test_sampler = None
 
-        self.data_dir = os.path.expanduser(data_dir)
+        self.data_dir = self.parse_dataset_dir(data_dir)
         self.batch_size = batch_size
         self.buffer_size = buffer_size
         self.attribute = attribute
@@ -61,6 +62,27 @@ class TripletsAttributeDataModule(pl.LightningDataModule):
             self.valid_sampler.batch_size = batch_size
         if self.test_sampler:
             self.test_sampler.batch_size = batch_size
+
+    def parse_dataset_dir(self, dataset_dir: str) -> str:
+        dataset_dir = os.path.expanduser(dataset_dir)
+
+        if os.path.isabs(dataset_dir):
+            return dataset_dir
+
+        # Try reading the appconfig.yaml file to get the root directory.
+        appconfig_path = os.path.abspath(
+            os.path.join(__file__, "../../../appconfig.yaml")
+        )
+        try:
+            with open(appconfig_path, "r") as infile:
+                config = yaml.safe_load(infile)
+
+                if "root_datasets_directory" in config:
+                    return os.path.join(config["root_datasets_directory"], dataset_dir)
+        except FileNotFoundError:
+            warnings.warn(f"{appconfig_path} not found.")
+
+        return dataset_dir
 
     def setup(self, stage: Optional[str]) -> None:
         super().setup(stage=stage)
