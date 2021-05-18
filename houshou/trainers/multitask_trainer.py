@@ -27,7 +27,7 @@ class MultitaskTrainer(pl.LightningModule):
         loss: str,
         lambda_value: float,
         learning_rate: float,
-        verifier: CVThresholdingVerifier,
+        verifier_args: Dict,
         **kwargs,
     ) -> None:
         super().__init__()
@@ -37,7 +37,7 @@ class MultitaskTrainer(pl.LightningModule):
         self.lambda_value = lambda_value
         self.learning_rate = learning_rate
         self.loss = get_loss(LOSS[loss], lambda_value=self.lambda_value)
-        self.verifier = verifier
+        self.verifier = CVThresholdingVerifier(**verifier_args)
 
         # Metrics
         metrics = MetricCollection(
