@@ -195,9 +195,7 @@ class Verifier:
             labels_ap = labels[attribute_pair_indx]
 
             try:
-                auc_ap = metrics.roc_auc_score(
-                    labels_ap, np.negative(distances_ap)
-                )  # type: ignore
+                auc_ap = metrics.roc_auc_score(labels_ap, np.negative(distances_ap))
             except ValueError:
                 if self.debug:
                     continue
