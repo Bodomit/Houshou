@@ -10,20 +10,23 @@ from sklearn.model_selection import KFold
 
 import torch
 from torch import nn
-from torch.utils.data import Dataset, DataLoader, dataloader
+from torch.utils.data import Dataset, DataLoader
 
 from .common import AnnotatedSample, Label, Pair, ROCCurve
 
 
 class Verifier:
-    def __init__(self, batch_size: int, seed: int):
+    def __init__(self, batch_size: int, debug: bool, seed: int):
         self.batch_size = batch_size
         self.rnd = np.random.RandomState(seed)
+        self.debug = debug
 
     def setup(self, dataloader: DataLoader):
         samples, data_map = self._load_data(dataloader)
         samples_per_label = self.get_samples_per_label(samples)
-        matching_pairs = self.get_matching_pairs(samples_per_label)
+        matching_pairs = self.get_matching_pairs(
+            samples_per_label, self.debug, self.batch_size
+        )
         unmatching_pairs = self.get_unmatching_pairs(
             samples_per_label, len(matching_pairs), self.rnd
         )
@@ -70,7 +73,9 @@ class Verifier:
 
     @staticmethod
     def get_matching_pairs(
-        samples_per_label: Dict[Label, Set[AnnotatedSample]]
+        samples_per_label: Dict[Label, Set[AnnotatedSample]],
+        debug: bool,
+        batch_size: int,
     ) -> Set[Pair]:
         matching_pairs: Set[Pair] = set()
 
@@ -84,6 +89,9 @@ class Verifier:
                 if pair[0][0] != pair[1][0]:
                     if (pair[1], pair[0]) not in matching_pairs:
                         matching_pairs.add(pair)
+
+                if debug and len(matching_pairs) >= batch_size * 10:
+                    break
 
         return matching_pairs
 
@@ -186,9 +194,14 @@ class Verifier:
             distances_ap = distances[attribute_pair_indx]
             labels_ap = labels[attribute_pair_indx]
 
-            auc_ap = metrics.roc_auc_score(
-                labels_ap, np.negative(distances_ap)
-            )  # type: ignore
+            try:
+                auc_ap = metrics.roc_auc_score(labels_ap, np.negative(distances_ap))
+            except ValueError:
+                if self.debug:
+                    continue
+                else:
+                    raise
+
             assert isinstance(auc_ap, float)
 
             attribute_pair_aucs[attribute_pair] = auc_ap
@@ -197,13 +210,8 @@ class Verifier:
 
 
 class CVThresholdingVerifier(Verifier):
-    def __init__(
-        self,
-        batch_size: int,
-        seed: int = 42,
-        n_splits=10,
-    ):
-        super().__init__(batch_size, seed)
+    def __init__(self, batch_size: int, debug=False, seed: int = 42, n_splits=10):
+        super().__init__(batch_size, debug, seed)
         self.n_splits = n_splits
 
     def cv_thresholding_verification(

@@ -1,3 +1,4 @@
+from typing import Dict
 import torch
 import torch.nn.functional as F
 
@@ -11,10 +12,10 @@ class TwoStageMultitaskTrainer(MultitaskTrainer):
         loss: str,
         lambda_value: float,
         learning_rate: float,
-        verifier: CVThresholdingVerifier,
+        verifier_args: Dict,
         **kwargs
     ) -> None:
-        super().__init__(loss, lambda_value, learning_rate, verifier, **kwargs)
+        super().__init__(loss, lambda_value, learning_rate, verifier_args, **kwargs)
         self.automatic_optimization = False
 
     def training_step(self, batch, batch_idx):
