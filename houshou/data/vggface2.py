@@ -1,7 +1,7 @@
 from functools import partial
 import os
 
-from typing import Any, Callable, Dict, List, Optional, Set, Tuple
+from typing import Any, Callable, Counter, Dict, List, Optional, Set, Tuple
 
 import pandas
 import numpy as np
@@ -72,8 +72,9 @@ class VGGFace2(TripletsAttributeDataModule):
         buffer_size: int,
         attribute: List[str],
         data_dir: str = "vggface2_MTCNN",
-        valid_split=0.05,
-        valid_split_seed=42,
+        valid_split: float = 0.05,
+        valid_samples_per_class: Optional[int] = 10,
+        valid_split_seed: int = 42,
         **kwargs,
     ):
         super().__init__(
@@ -87,6 +88,7 @@ class VGGFace2(TripletsAttributeDataModule):
         # Store attributes.
         self.valid_split = valid_split
         self.valid_split_seed = valid_split_seed
+        self.valid_samples_per_class = valid_samples_per_class
 
         # Define the transformations.
         common_transforms = transforms.Compose(
@@ -144,7 +146,21 @@ class VGGFace2(TripletsAttributeDataModule):
             real_split_classes, self.valid_split, self.valid_split_seed
         )
         val_classes_encoded = set([image_folder.class_to_idx[c] for c in val_classes])
-        val_mask = [s[1] in val_classes_encoded for s in image_folder.samples]
+
+        val_mask: List[bool] = []
+        if self.valid_samples_per_class is None:
+            val_mask = [s[1] in val_classes_encoded for s in image_folder.samples]
+        else:
+            val_samples_per_class_counter = Counter()
+            for s in image_folder.samples:
+                if (
+                    s[1] in val_classes_encoded
+                    and val_samples_per_class_counter[s] < self.valid_samples_per_class
+                ):
+                    val_mask.append(True)
+                    val_samples_per_class_counter[s[1]] += 1
+                else:
+                    val_mask.append(False)
 
         # Split into validation and training samples.
         val_samples: List[Tuple[str, int]] = []
