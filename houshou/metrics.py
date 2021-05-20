@@ -42,7 +42,7 @@ class Verifier:
 
         datamap_dataset = DataMapDataset(data_map)
         self.datamap_dataloader = DataLoader(
-            datamap_dataset, batch_size=self.batch_size, num_workers=4, pin_memory=True
+            datamap_dataset, batch_size=self.batch_size, num_workers=4
         )
 
     @staticmethod
