@@ -1,7 +1,7 @@
 from functools import partial
 import os
 
-from typing import Any, Callable, Dict, List, Optional, Set, Tuple
+from typing import Any, Callable, Counter, Dict, List, Optional, Set, Tuple
 
 import pandas
 import numpy as np
@@ -72,8 +72,9 @@ class VGGFace2(TripletsAttributeDataModule):
         buffer_size: int,
         attribute: List[str],
         data_dir: str = "vggface2_MTCNN",
-        valid_split=0.05,
-        valid_split_seed=42,
+        valid_split: float = 0.05,
+        valid_samples_per_class: Optional[int] = 10,
+        valid_split_seed: int = 42,
         **kwargs,
     ):
         super().__init__(
@@ -87,6 +88,7 @@ class VGGFace2(TripletsAttributeDataModule):
         # Store attributes.
         self.valid_split = valid_split
         self.valid_split_seed = valid_split_seed
+        self.valid_samples_per_class = valid_samples_per_class
 
         # Define the transformations.
         common_transforms = transforms.Compose(
@@ -144,15 +146,37 @@ class VGGFace2(TripletsAttributeDataModule):
             real_split_classes, self.valid_split, self.valid_split_seed
         )
         val_classes_encoded = set([image_folder.class_to_idx[c] for c in val_classes])
-        val_mask = [s[1] in val_classes_encoded for s in image_folder.samples]
+
+        val_class_mask = [s[1] in val_classes_encoded for s in image_folder.samples]
+
+        if self.valid_samples_per_class is None:
+            val_samples_mask = val_class_mask
+        else:
+            # If the number of samples per validation class is limited,
+            # count the number of samples added and only set that number
+            # to true in the samples mask. This is an inefficient quick hack...
+            val_samples_mask: list[bool] = []
+            val_samples_per_class_counter = Counter()
+            for s in image_folder.samples:
+                if (
+                    s[1] in val_classes_encoded
+                    and val_samples_per_class_counter[s[1]]
+                    < self.valid_samples_per_class
+                ):
+                    val_samples_mask.append(True)
+                    val_samples_per_class_counter[s[1]] += 1
+                else:
+                    val_samples_mask.append(False)
 
         # Split into validation and training samples.
         val_samples: List[Tuple[str, int]] = []
         train_samples: List[Tuple[str, int]] = []
-        for s, m in zip(image_folder.samples, val_mask):
-            if m is True:
+        for s, cm, sm in zip(image_folder.samples, val_class_mask, val_samples_mask):
+            if cm is True and sm is True:
                 val_samples.append(s)
-            else:
+            elif cm is True and sm is False:
+                continue
+            elif cm is False:
                 train_samples.append(s)
 
         # Construct the dataset objects proper.
