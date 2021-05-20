@@ -41,7 +41,7 @@ echo "GPU Stats:"
 nvidia-smi
 echo ""
 
-python -m features_train \
+srun python -m features_train \
     --config $CONFIG_PATH \
     --trainer.default_root_dir $RESULTSDIR \
     --model.lambda_value $ALPHA
