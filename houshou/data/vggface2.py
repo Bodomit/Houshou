@@ -147,28 +147,36 @@ class VGGFace2(TripletsAttributeDataModule):
         )
         val_classes_encoded = set([image_folder.class_to_idx[c] for c in val_classes])
 
-        val_mask: List[bool] = []
+        val_class_mask = [s[1] in val_classes_encoded for s in image_folder.samples]
+
         if self.valid_samples_per_class is None:
-            val_mask = [s[1] in val_classes_encoded for s in image_folder.samples]
+            val_samples_mask = val_class_mask
         else:
+            # If the number of samples per validation class is limited,
+            # count the number of samples added and only set that number
+            # to true in the samples mask. This is an inefficient quick hack...
+            val_samples_mask: list[bool] = []
             val_samples_per_class_counter = Counter()
             for s in image_folder.samples:
                 if (
                     s[1] in val_classes_encoded
-                    and val_samples_per_class_counter[s] < self.valid_samples_per_class
+                    and val_samples_per_class_counter[s[1]]
+                    < self.valid_samples_per_class
                 ):
-                    val_mask.append(True)
+                    val_samples_mask.append(True)
                     val_samples_per_class_counter[s[1]] += 1
                 else:
-                    val_mask.append(False)
+                    val_samples_mask.append(False)
 
         # Split into validation and training samples.
         val_samples: List[Tuple[str, int]] = []
         train_samples: List[Tuple[str, int]] = []
-        for s, m in zip(image_folder.samples, val_mask):
-            if m is True:
+        for s, cm, sm in zip(image_folder.samples, val_class_mask, val_samples_mask):
+            if cm is True and sm is True:
                 val_samples.append(s)
-            else:
+            elif cm is True and sm is False:
+                continue
+            elif cm is False:
                 train_samples.append(s)
 
         # Construct the dataset objects proper.
