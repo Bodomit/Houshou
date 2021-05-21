@@ -16,8 +16,15 @@ from .common import AnnotatedSample, Label, Pair, ROCCurve
 
 
 class Verifier:
-    def __init__(self, batch_size: int, debug: bool, seed: int):
+    def __init__(
+        self,
+        batch_size: int,
+        max_n_matching_pairs: Optional[int],
+        debug: bool,
+        seed: int,
+    ):
         self.batch_size = batch_size
+        self.max_n_matching_pairs = max_n_matching_pairs
         self.rnd = np.random.RandomState(seed)
         self.debug = debug
 
@@ -25,7 +32,11 @@ class Verifier:
         samples, data_map = self._load_data(dataloader)
         samples_per_label = self.get_samples_per_label(samples)
         matching_pairs = self.get_matching_pairs(
-            samples_per_label, self.debug, self.batch_size
+            samples_per_label,
+            self.debug,
+            self.batch_size,
+            self.max_n_matching_pairs,
+            self.rnd,
         )
         unmatching_pairs = self.get_unmatching_pairs(
             samples_per_label, len(matching_pairs), self.rnd
@@ -76,6 +87,8 @@ class Verifier:
         samples_per_label: Dict[Label, Set[AnnotatedSample]],
         debug: bool,
         batch_size: int,
+        max_n_matching_pairs: Optional[int],
+        rnd: np.random.RandomState,
     ) -> Set[Pair]:
         matching_pairs: Set[Pair] = set()
 
@@ -92,6 +105,17 @@ class Verifier:
 
                 if debug and len(matching_pairs) >= batch_size * 10:
                     break
+
+        if (
+            max_n_matching_pairs is not None
+            and len(matching_pairs) > max_n_matching_pairs
+        ):
+            indexs = rnd.choice(
+                len(matching_pairs), max_n_matching_pairs, replace=False
+            )
+
+            matching_pairs_list = list(matching_pairs)
+            matching_pairs = set([matching_pairs_list[i] for i in indexs])
 
         return matching_pairs
 
@@ -210,8 +234,15 @@ class Verifier:
 
 
 class CVThresholdingVerifier(Verifier):
-    def __init__(self, batch_size: int, debug=False, seed: int = 42, n_splits=10):
-        super().__init__(batch_size, debug, seed)
+    def __init__(
+        self,
+        batch_size: int,
+        max_n_matching_pairs: Optional[int] = 1000000,
+        debug=False,
+        seed: int = 42,
+        n_splits=10,
+    ):
+        super().__init__(batch_size, max_n_matching_pairs, debug, seed)
         self.n_splits = n_splits
 
     def cv_thresholding_verification(
