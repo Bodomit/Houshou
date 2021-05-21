@@ -7,10 +7,11 @@
 #SBATCH --gres=gpu:1
 #SBATCH --output=/mnt/scratch2/users/40057686/logs/houshou/%A-%a.log
 #SBATCH --time=3-0
+#SBATCH --signal=SIGUSR1@90
 
 # Invoke with sbatch --array=0-10 ./scripts/run_config_for_alphas.sh $CONFIG_PATH $RESULTS_ROOT_DIR
 
-# module add nvidia-cuda
+module add nvidia-cuda
 
 CONFIG_PATH=$1
 CONFIG_NAME="$(basename $CONFIG_PATH .yaml)"
