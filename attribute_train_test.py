@@ -64,6 +64,8 @@ def main(experiment_path: str, batch_size: int, is_fast_dev_run: bool):
             )
 
             results = trainer.test(aem_task, datamodule=test_module)
+
+            os.makedirs(os.path.dirname(results_path), exist_ok=True)
             with open(results_path, "w") as outfile:
                 yaml.dump(results[0], outfile)
 
