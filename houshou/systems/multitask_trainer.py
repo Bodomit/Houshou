@@ -37,7 +37,9 @@ class MultitaskTrainer(pl.LightningModule):
         self.lambda_value = lambda_value
         self.learning_rate = learning_rate
         self.loss = get_loss(LOSS[loss], lambda_value=self.lambda_value)
-        self.verifier = CVThresholdingVerifier(**verifier_args)
+        self.verifier = (
+            CVThresholdingVerifier(**verifier_args) if verifier_args else None
+        )
 
         # Metrics
         metrics = MetricCollection(
@@ -147,6 +149,9 @@ class MultitaskTrainer(pl.LightningModule):
     def on_train_end(self) -> None:
         assert self.on_gpu
         assert isinstance(self.device, torch.device)
+
+        if self.verifier is None:
+            return
 
         (
             metrics_rocs,

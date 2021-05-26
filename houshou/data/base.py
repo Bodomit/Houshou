@@ -18,7 +18,7 @@ class TripletsAttributeDataModule(pl.LightningDataModule):
         self,
         data_dir: str,
         batch_size: int,
-        buffer_size: int,
+        buffer_size: Optional[int],
         attribute: List[str],
         target_type: List[str] = ["identity", "attr"],
         **kwargs,
@@ -87,6 +87,9 @@ class TripletsAttributeDataModule(pl.LightningDataModule):
     def setup(self, stage: Optional[str]) -> None:
         super().setup(stage=stage)
 
+        if self.buffer_size is None:
+            return
+
         if stage is None or stage == "fit":
             assert self.train
             assert self.valid
@@ -106,25 +109,32 @@ class TripletsAttributeDataModule(pl.LightningDataModule):
                 self.test.identities, self.batch_size, False, self.buffer_size
             )
 
+    def _create_dataloader(self, dataset, batch_sampler, shuffle):
+        if self.buffer_size is not None:
+            return DataLoader(
+                dataset, batch_sampler=batch_sampler, num_workers=self.num_workers
+            )
+        else:
+            return DataLoader(
+                dataset,
+                batch_size=self.batch_size,
+                num_workers=self.num_workers,
+                shuffle=shuffle,
+            )
+
     def train_dataloader(self) -> DataLoader:
         assert self.train
-        train = DataLoader(
-            self.train, batch_sampler=self.train_sampler, num_workers=self.num_workers
-        )
+        train = self._create_dataloader(self.train, self.train_sampler, True)
         return train
 
     def val_dataloader(self) -> DataLoader:
         assert self.valid
-        valid = DataLoader(
-            self.valid, batch_sampler=self.valid_sampler, num_workers=self.num_workers
-        )
+        valid = self._create_dataloader(self.valid, self.valid_sampler, False)
         return valid
 
     def test_dataloader(self) -> DataLoader:
         assert self.test
-        test = DataLoader(
-            self.test, batch_sampler=self.test_sampler, num_workers=self.num_workers
-        )
+        test = self._create_dataloader(self.test, self.test_sampler, False)
         return test
 
     @staticmethod

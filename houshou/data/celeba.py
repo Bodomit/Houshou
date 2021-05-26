@@ -17,10 +17,10 @@ class CelebA(TripletsAttributeDataModule):
     def __init__(
         self,
         batch_size: int,
-        buffer_size: int,
+        buffer_size: Optional[int],
         attribute: List[str],
         data_dir: str = "CelebA_MTCNN",
-        use_png=True,
+        use_png: bool = True,
         **kwargs
     ):
         super().__init__(data_dir, batch_size, buffer_size, attribute, **kwargs)
