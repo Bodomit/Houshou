@@ -83,18 +83,21 @@ class AttributeExtractionTask(pl.LightningModule):
 
         prefix = metric_collection.prefix
         a_hat_softmax = F.softmax(attribute_pred, dim=1)
-        a_onehot = to_onehot(attribute)
-        metrics = metric_collection(a_hat_softmax, a_onehot)
+        metrics = metric_collection(a_hat_softmax, attribute)
 
         tp, fp, tn, fn, _ = stat_scores(
-            a_hat_softmax, a_onehot, reduce="micro", num_classes=self.n_outputs
+            a_hat_softmax,
+            attribute,
+            reduce="micro",
+            num_classes=self.n_outputs,
+            multiclass=False,
         )
         stats = {"tp": tp, "fp": fp, "tn": tn, "fn": fn}
         stats = {f"{prefix}{k}": stats[k] for k in stats}
 
         combined_metrics = metrics | stats
 
-        self.log("{prefix}loss", loss, on_step=True, on_epoch=True)
+        self.log(f"{prefix}loss", loss, on_step=True, on_epoch=True)
         self.log_dict(combined_metrics, on_step=True, on_epoch=True)
 
     def configure_optimizers(self):

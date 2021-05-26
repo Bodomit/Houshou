@@ -34,8 +34,8 @@ class TripletsAttributeDataModule(pl.LightningDataModule):
         self.test_sampler = None
 
         self.data_dir = self.parse_dataset_dir(data_dir)
-        self.batch_size = batch_size
         self.buffer_size = buffer_size
+        self.batch_size = batch_size
         self.attribute = attribute
         self.target_type = target_type
 
@@ -48,7 +48,7 @@ class TripletsAttributeDataModule(pl.LightningDataModule):
     @batch_size.setter
     def batch_size(self, batch_size: int):
 
-        if batch_size < self.MIN_BATCH_SIZE:
+        if batch_size < self.MIN_BATCH_SIZE and self.buffer_size is not None:
             msg = f"batch_size {batch_size} below minimum of {self.MIN_BATCH_SIZE}. "
             msg += f"Setting batch_size to {self.MIN_BATCH_SIZE}"
             warnings.warn(msg)

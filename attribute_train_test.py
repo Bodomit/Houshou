@@ -11,7 +11,7 @@ from houshou.utils import find_last_epoch_path
 pl.seed_everything(42, workers=True)
 
 
-def main(experiment_path: str, batch_size: int):
+def main(experiment_path: str, batch_size: int, is_fast_dev_run: bool):
     # Get the path to the last checkpoint.
     feature_model_checkpoint_path = find_last_epoch_path(experiment_path)
 
@@ -49,13 +49,15 @@ def main(experiment_path: str, batch_size: int):
             gpus=1,
             auto_select_gpus=True,
             benchmark=True,
+            fast_dev_run=is_fast_dev_run,
         )
         trainer.fit(aem_task, train_module)
         aem_task.freeze()
         del trainer
 
-        # Run the tests. A new Trainer obhect is created each time
-        # in order to have a different root_log_dir.
+        # Run the tests. A new Trainer object is created each time
+        # in order to have a different root_log_dir. Also, test()
+        # doesn't support multiple datamodules yet.
         for test_module in datamodules:
             root_dir_test = os.path.join(
                 root_dir, os.path.basename(test_module.data_dir)
@@ -65,8 +67,9 @@ def main(experiment_path: str, batch_size: int):
                 gpus=1,
                 auto_select_gpus=True,
                 benchmark=True,
+                fast_dev_run=is_fast_dev_run,
             )
-            tester.test(aem_task, test_module)
+            tester.test(aem_task, datamodule=test_module)
             del tester
 
         del aem_task
@@ -75,6 +78,7 @@ def main(experiment_path: str, batch_size: int):
 if __name__ == "__main__":
     parser = ArgumentParser()
     parser.add_argument("experiment_path")
-    parser.add_argument("--batch_size", type=int, default=1024)
+    parser.add_argument("--batch-size", type=int, default=512)
+    parser.add_argument("--debug", action="store_true")
     args = parser.parse_args()
-    main(args.experiment_path, args.batch_size)
+    main(args.experiment_path, args.batch_size, args.debug)
