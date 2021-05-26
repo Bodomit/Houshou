@@ -1,6 +1,7 @@
 import os
 from argparse import ArgumentParser
 
+from ruyaml import YAML
 import pytorch_lightning as pl
 
 from houshou.models import FeatureModel
@@ -34,6 +35,8 @@ def main(experiment_path: str, batch_size: int, is_fast_dev_run: bool):
         VGGFace2(batch_size, None, ["Male"]),
     ]
 
+    yaml = YAML(typ="safe")
+
     for train_module in datamodules:
 
         # Get directory for this test.
@@ -53,25 +56,18 @@ def main(experiment_path: str, batch_size: int, is_fast_dev_run: bool):
         )
         trainer.fit(aem_task, train_module)
         aem_task.freeze()
-        del trainer
 
-        # Run the tests. A new Trainer object is created each time
-        # in order to have a different root_log_dir. Also, test()
-        # doesn't support multiple datamodules yet.
+        # Test each data module.
         for test_module in datamodules:
-            root_dir_test = os.path.join(
-                root_dir, os.path.basename(test_module.data_dir)
+            results_path = os.path.join(
+                root_dir, f"{os.path.basename(test_module.data_dir)}.yaml"
             )
-            tester = pl.Trainer(
-                default_root_dir=root_dir_test,
-                gpus=1,
-                auto_select_gpus=True,
-                benchmark=True,
-                fast_dev_run=is_fast_dev_run,
-            )
-            tester.test(aem_task, datamodule=test_module)
-            del tester
 
+            results = trainer.test(aem_task, datamodule=test_module)
+            with open(results_path, "w") as outfile:
+                yaml.dump(results[0], outfile)
+
+        del trainer
         del aem_task
 
 
