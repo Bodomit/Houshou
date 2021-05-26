@@ -39,7 +39,7 @@ class TripletsAttributeDataModule(pl.LightningDataModule):
         self.attribute = attribute
         self.target_type = target_type
 
-        self.num_workers = 4
+        self.num_workers = len(os.sched_getaffinity(0))
 
     @property
     def batch_size(self):
