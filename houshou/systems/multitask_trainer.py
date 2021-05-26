@@ -45,7 +45,9 @@ class MultitaskTrainer(pl.LightningModule):
         metrics = MetricCollection(
             {
                 "Accuracy": Accuracy(num_classes=2),
-                "BalancedAccuracy": Accuracy(num_classes=2, average="weighted"),
+                "BalancedAccuracy": Accuracy(
+                    num_classes=2, average="weighted", mdmc_average="samplewise"
+                ),
                 "Precison": Precision(num_classes=2),
                 "Recall": Recall(num_classes=2),
                 "F1": F1(num_classes=2),

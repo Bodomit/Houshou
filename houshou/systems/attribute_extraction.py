@@ -27,7 +27,9 @@ class AttributeExtractionTask(pl.LightningModule):
         metrics = MetricCollection(
             {
                 "Accuracy": Accuracy(num_classes=n_outputs),
-                "BalancedAccuracy": Accuracy(num_classes=n_outputs, average="weighted"),
+                "BalancedAccuracy": Accuracy(
+                    num_classes=n_outputs, average="weighted", mdmc_average="samplewise"
+                ),
                 "Precison": Precision(num_classes=n_outputs),
                 "Recall": Recall(num_classes=n_outputs),
                 "F1": F1(num_classes=n_outputs),
