@@ -37,13 +37,17 @@ class MultitaskTrainer(pl.LightningModule):
         self.lambda_value = lambda_value
         self.learning_rate = learning_rate
         self.loss = get_loss(LOSS[loss], lambda_value=self.lambda_value)
-        self.verifier = CVThresholdingVerifier(**verifier_args)
+        self.verifier = (
+            CVThresholdingVerifier(**verifier_args) if verifier_args else None
+        )
 
         # Metrics
         metrics = MetricCollection(
             {
                 "Accuracy": Accuracy(num_classes=2),
-                "BalancedAccuracy": Accuracy(num_classes=2, average="weighted"),
+                "BalancedAccuracy": Accuracy(
+                    num_classes=2, average="weighted", mdmc_average="samplewise"
+                ),
                 "Precison": Precision(num_classes=2),
                 "Recall": Recall(num_classes=2),
                 "F1": F1(num_classes=2),
@@ -147,6 +151,9 @@ class MultitaskTrainer(pl.LightningModule):
     def on_train_end(self) -> None:
         assert self.on_gpu
         assert isinstance(self.device, torch.device)
+
+        if self.verifier is None:
+            return
 
         (
             metrics_rocs,

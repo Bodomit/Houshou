@@ -1,7 +1,7 @@
 trainer:
   default_root_dir: /home/gbrown/results/houshou/semihard_mining/0.5
 model:
-  class_path: houshou.trainers.MultitaskTrainer
+  class_path: houshou.systems.MultitaskTrainer
   init_args:
     loss: SEMIHARD_CROSSENTROPY
     lambda_value: 0.5
