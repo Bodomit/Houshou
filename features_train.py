@@ -1,5 +1,5 @@
 from houshou.data import TripletsAttributeDataModule
-from houshou.trainers import TwoStageMultitaskTrainer
+from houshou.systems import TwoStageMultitaskTrainer
 from pytorch_lightning.utilities.cli import LightningCLI
 
 cli = LightningCLI(
