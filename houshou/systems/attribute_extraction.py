@@ -50,7 +50,7 @@ class AttributeExtractionTask(pl.LightningModule):
         a_hat = self(x)
         loss = F.cross_entropy(a_hat, a)
 
-        self.log_metrics(self.train_metrics, a_hat, a, loss)
+        self.log_metrics(self.train_metrics, a_hat, a, loss, True)
 
         return loss
 
@@ -61,7 +61,7 @@ class AttributeExtractionTask(pl.LightningModule):
         a_hat = self(x)
         loss = F.cross_entropy(a_hat, a)
 
-        self.log_metrics(self.val_metrics, a_hat, a, loss)
+        self.log_metrics(self.val_metrics, a_hat, a, loss, False)
 
     def test_step(self, batch, batch_idx):
         x, (_, a) = batch
@@ -70,7 +70,7 @@ class AttributeExtractionTask(pl.LightningModule):
         a_hat = self(x)
         loss = F.cross_entropy(a_hat, a)
 
-        self.log_metrics(self.test_metrics, a_hat, a, loss)
+        self.log_metrics(self.test_metrics, a_hat, a, loss, False)
 
     def log_metrics(
         self,
@@ -78,6 +78,7 @@ class AttributeExtractionTask(pl.LightningModule):
         attribute_pred: torch.Tensor,
         attribute: torch.Tensor,
         loss: torch.Tensor,
+        log_on_step: bool,
     ):
 
         prefix = metric_collection.prefix
@@ -96,8 +97,8 @@ class AttributeExtractionTask(pl.LightningModule):
 
         combined_metrics = metrics | stats
 
-        self.log(f"{prefix}loss", loss, on_step=True, on_epoch=True)
-        self.log_dict(combined_metrics, on_step=True, on_epoch=True)
+        self.log(f"{prefix}loss", loss, on_step=log_on_step, on_epoch=True)
+        self.log_dict(combined_metrics, on_step=log_on_step, on_epoch=True)
 
     def configure_optimizers(self):
         return torch.optim.Adam(self.parameters(), lr=self.learning_rate)
