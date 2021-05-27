@@ -12,6 +12,10 @@ import torch
 from torch import nn
 from torch.utils.data import Dataset, DataLoader
 
+from torchmetrics import Metric
+from torchmetrics.functional import stat_scores
+from torchmetrics.utilities.data import to_categorical
+
 from .common import AnnotatedSample, Label, Pair, ROCCurve
 
 
@@ -392,3 +396,35 @@ class DataMapDataset(Dataset):
 
     def __getitem__(self, index) -> Tuple[int, np.ndarray]:
         return self.dataid_with_data[index]
+
+
+class BalancedAccuracy(Metric):
+    def __init__(self, num_classes: int, **kwargs):
+        super().__init__(**kwargs)
+        self.num_classes = num_classes
+
+        self.add_state(
+            "correct", default=torch.tensor(0).repeat(num_classes), dist_reduce_fx="sum"
+        )
+        self.add_state(
+            "total", default=torch.tensor(0).repeat(num_classes), dist_reduce_fx="sum"
+        )
+
+    def update(self, preds: torch.Tensor, target: torch.Tensor) -> None:
+        preds_ = to_categorical(preds)
+        assert preds_.shape == target.shape
+
+        scores = stat_scores(
+            preds_, target, num_classes=self.num_classes, reduce="macro"
+        )
+
+        correct_per_class = scores[:, 0]
+        total_per_class = scores[:, 4]
+
+        self.correct += correct_per_class
+        self.total += total_per_class
+
+    def compute(self):
+        use_mask = self.total > 0
+        accuracy_per_class = self.correct[use_mask].float() / self.total[use_mask]
+        return torch.sum(accuracy_per_class) / self.num_classes

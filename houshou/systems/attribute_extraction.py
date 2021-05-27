@@ -8,6 +8,7 @@ from torchmetrics.classification import Accuracy, Precision, Recall, F1
 from torchmetrics.functional import stat_scores
 
 from houshou.models import AttributeExtractionModel, FeatureModel
+from houshou.metrics import BalancedAccuracy
 
 
 class AttributeExtractionTask(pl.LightningModule):
@@ -27,9 +28,7 @@ class AttributeExtractionTask(pl.LightningModule):
         metrics = MetricCollection(
             {
                 "Accuracy": Accuracy(num_classes=n_outputs),
-                "BalancedAccuracy": Accuracy(
-                    num_classes=n_outputs, average="weighted", mdmc_average="samplewise"
-                ),
+                "BalancedAccuracy": BalancedAccuracy(num_classes=n_outputs),
                 "Precison": Precision(num_classes=n_outputs),
                 "Recall": Recall(num_classes=n_outputs),
                 "F1": F1(num_classes=n_outputs),
