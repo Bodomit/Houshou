@@ -1,12 +1,9 @@
 import os
-import pickle
 import shutil
-from functools import partial
 
 import torch
 import torch.nn.functional as F
 import pytorch_lightning as pl
-import pandas as pd
 
 from torch.utils.data.dataloader import DataLoader
 from torchmetrics.classification import Accuracy, Precision, Recall, F1
@@ -16,9 +13,9 @@ from torchmetrics.collections import MetricCollection
 from houshou.losses import LOSS, get_loss
 from houshou.metrics import BalancedAccuracy, CVThresholdingVerifier
 from houshou.models import MultiTaskTrainingModel
+from houshou.utils import save_cv_verification_results
 
-from typing import Any, List, Tuple, Dict
-from houshou.common import ROCCurve
+from typing import Any, Tuple, Dict
 
 
 class MultitaskTrainer(pl.LightningModule):
@@ -165,31 +162,17 @@ class MultitaskTrainer(pl.LightningModule):
         os.makedirs(val_results_path, exist_ok=True)
 
         # Save the combined cv verification results.
-        self.save_cv_verification_results(metrics_rocs, val_results_path, "_all")
+        save_cv_verification_results(metrics_rocs, val_results_path, "_all")
 
         # Save the attribuet pair results.
         for ap in per_attribute_pair_metrics_rocs:
             ap_suffix = f"_{ap[0]}_{ap[1]}"
-            self.save_cv_verification_results(
+            save_cv_verification_results(
                 per_attribute_pair_metrics_rocs[ap], val_results_path, ap_suffix
             )
 
         # Final cleanup.
         super().on_fit_end()
-
-    def save_cv_verification_results(
-        self,
-        metrics_rocs: Tuple[pd.DataFrame, List[ROCCurve]],
-        val_results_path: str,
-        suffix="",
-    ):
-        fn = partial(os.path.join, val_results_path)
-
-        metrics, rocs = metrics_rocs
-        metrics.to_csv(fn(f"verification{suffix}.csv"))
-
-        with open(fn(f"roc_curves{suffix}.pickle"), "wb") as outfile:
-            pickle.dump(rocs, outfile)
 
     def forward(self, x):
         return self.model(x)

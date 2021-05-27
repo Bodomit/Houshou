@@ -1,7 +1,13 @@
 import os
 import re
 import glob
+import pickle
+from functools import partial
+
 from typing import List, Tuple
+
+import pandas as pd
+from houshou.common import ROCCurve
 
 
 def parse_root_results_directory_argument(args: List[str]):
@@ -41,3 +47,17 @@ def find_last_epoch_path(path: str) -> str:
     )
 
     return sorted_paths_with_epochs_steps[0][0]
+
+
+def save_cv_verification_results(
+    metrics_rocs: Tuple[pd.DataFrame, List[ROCCurve]],
+    val_results_path: str,
+    suffix="",
+):
+    fn = partial(os.path.join, val_results_path)
+
+    metrics, rocs = metrics_rocs
+    metrics.to_csv(fn(f"verification{suffix}.csv"))
+
+    with open(fn(f"roc_curves{suffix}.pickle"), "wb") as outfile:
+        pickle.dump(rocs, outfile)

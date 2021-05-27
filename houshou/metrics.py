@@ -173,7 +173,15 @@ class Verifier:
         features_per_batch = []
         ids_per_batch = []
         for ids, data in self.datamap_dataloader:
-            features, _ = model(data.to(device).squeeze())
+            outputs = model(data.to(device).squeeze())
+
+            if isinstance(outputs, torch.Tensor):
+                features = outputs
+            elif len(outputs) == 2:
+                features, _ = outputs
+            else:
+                raise ValueError
+
             features_per_batch.append(features.cpu().detach().numpy())
             ids_per_batch.append(ids.cpu().detach().numpy())
 

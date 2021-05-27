@@ -30,7 +30,7 @@ def main(experiment_path: str, batch_size: int, is_fast_dev_run: bool):
     assert isinstance(feature_model, FeatureModel)
     feature_model.freeze()
 
-    # Construct the datamodules. This will take some time.
+    # Construct the datamodules.
     datamodules = [
         VGGFace2(batch_size, None, ["Male"]),
         CelebA(batch_size, None, ["Male"]),
