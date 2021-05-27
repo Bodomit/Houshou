@@ -2,8 +2,8 @@
 #SBATCH --job-name=Houshou
 #SBATCH --partition=k2-gpu
 #SBATCH --ntasks=1
-#SBATCH --cpus-per-task=8
-#SBATCH --mem=200GB
+#SBATCH --cpus-per-task=12
+#SBATCH --mem=100GB
 #SBATCH --gres=gpu:1
 #SBATCH --output=/mnt/scratch2/users/40057686/logs/houshou/%A-%a.log
 #SBATCH --time=3-0

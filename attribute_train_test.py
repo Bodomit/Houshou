@@ -32,8 +32,8 @@ def main(experiment_path: str, batch_size: int, is_fast_dev_run: bool):
 
     # Construct the datamodules. This will take some time.
     datamodules = [
-        CelebA(batch_size, None, ["Male"]),
         VGGFace2(batch_size, None, ["Male"]),
+        CelebA(batch_size, None, ["Male"]),
     ]
 
     yaml = YAML(typ="safe")
@@ -55,7 +55,7 @@ def main(experiment_path: str, batch_size: int, is_fast_dev_run: bool):
         aem_task = AttributeExtractionTask(feature_model, 0.001)
         trainer = pl.Trainer(
             logger=loggers,
-            max_epochs=50,
+            max_epochs=10,
             default_root_dir=root_dir,
             gpus=1,
             auto_select_gpus=True,
