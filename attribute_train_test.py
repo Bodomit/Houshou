@@ -3,6 +3,7 @@ from argparse import ArgumentParser
 
 from ruyaml import YAML
 import pytorch_lightning as pl
+from pytorch_lightning.loggers import CSVLogger, TensorBoardLogger
 
 from houshou.models import FeatureModel
 from houshou.systems import TwoStageMultitaskTrainer, AttributeExtractionTask
@@ -44,9 +45,16 @@ def main(experiment_path: str, batch_size: int, is_fast_dev_run: bool):
             experiment_path, "aems", os.path.basename(train_module.data_dir)
         )
 
+        # Constuct loggers.
+        loggers = [
+            CSVLogger(save_dir=root_dir, name="csv_logs"),
+            TensorBoardLogger(save_dir=root_dir, name="tb_logs"),
+        ]
+
         # Train the attribute extraction model.
         aem_task = AttributeExtractionTask(feature_model, 0.001)
         trainer = pl.Trainer(
+            logger=loggers,
             max_epochs=50,
             default_root_dir=root_dir,
             gpus=1,

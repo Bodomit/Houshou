@@ -14,7 +14,7 @@ from torchmetrics.classification import ConfusionMatrix
 from torchmetrics.collections import MetricCollection
 
 from houshou.losses import LOSS, get_loss
-from houshou.metrics import CVThresholdingVerifier
+from houshou.metrics import BalancedAccuracy, CVThresholdingVerifier
 from houshou.models import MultiTaskTrainingModel
 
 from typing import Any, List, Tuple, Dict
@@ -45,9 +45,7 @@ class MultitaskTrainer(pl.LightningModule):
         metrics = MetricCollection(
             {
                 "Accuracy": Accuracy(num_classes=2),
-                "BalancedAccuracy": Accuracy(
-                    num_classes=2, average="weighted", mdmc_average="samplewise"
-                ),
+                "BalancedAccuracy": BalancedAccuracy(num_classes=2),
                 "Precison": Precision(num_classes=2),
                 "Recall": Recall(num_classes=2),
                 "F1": F1(num_classes=2),
