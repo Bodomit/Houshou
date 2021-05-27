@@ -205,6 +205,7 @@ class MultitaskTrainer(pl.LightningModule):
         ab: torch.Tensor,
         embeddings: torch.Tensor,
         pred_attribute: torch.Tensor,
+        prefix: str = "loss_",
     ) -> Tuple[torch.Tensor, Dict[str, torch.Tensor]]:
 
         losses = loss_func(embeddings, pred_attribute, yb, ab)
@@ -216,5 +217,5 @@ class MultitaskTrainer(pl.LightningModule):
             sub_losses = {}
 
         # Prefix "loss_" to each of the sublosses
-        prefixed_sublosses = {f"loss_{k}": sub_losses[k] for k in sub_losses}
+        prefixed_sublosses = {f"{prefix}{k}": sub_losses[k] for k in sub_losses}
         return total_loss, prefixed_sublosses
