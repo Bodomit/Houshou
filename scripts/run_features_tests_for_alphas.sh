@@ -6,7 +6,7 @@
 #SBATCH --mem=200GB
 #SBATCH --gres=gpu:1
 #SBATCH --output=/mnt/scratch2/users/40057686/logs/houshou/%A-%a.log
-#SBATCH --time=3-0
+#SBATCH --time=60
 
 # Invoke with sbatch --array=0-10 ./scripts/run_features_tests_for_alphas.sh $RESULTS_ROOT_DIR
 
@@ -35,4 +35,4 @@ echo "GPU Stats:"
 nvidia-smi
 echo ""
 
-srun python -m features_tests $RESULTSDIR
+srun python -m features_test $RESULTSDIR
