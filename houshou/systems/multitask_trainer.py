@@ -74,7 +74,8 @@ class MultitaskTrainer(pl.LightningModule):
             )
             self.attribute_weights = attribute_weights
         else:
-            self.attribute_weights = torch.ones_like(support)
+            self.attribute_weights = torch.ones_like(support, dtype=torch.float)
+        self.attribute_weights = self.attribute_weights.to(self.device)
 
         # Set up the verification scenario tester.
         if self.verifier is not None:
@@ -205,7 +206,7 @@ class MultitaskTrainer(pl.LightningModule):
         ab: torch.Tensor,
         embeddings: torch.Tensor,
         pred_attribute: torch.Tensor,
-        prefix: str = "loss_",
+        prefix: str = "loss/",
     ) -> Tuple[torch.Tensor, Dict[str, torch.Tensor]]:
 
         losses = loss_func(embeddings, pred_attribute, yb, ab, self.attribute_weights)
