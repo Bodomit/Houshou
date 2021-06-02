@@ -39,8 +39,8 @@ class SHM_UniformKLDivergence(SemiHardTripletMiner):
         pred_log_softmax = F.log_softmax(attribute_pred, dim=1)
         loss = F.kl_div(pred_log_softmax, expanded_target, reduction="none")
 
-        weights_per_sample = attribute_weights[attribute].to(loss.device)
-        loss_per_sample = loss.sum(1, keepdim=True)
+        weights_per_sample = attribute_weights[attribute].squeeze()
+        loss_per_sample = loss.sum(1).squeeze()
         assert weights_per_sample.shape == loss_per_sample.shape
         loss_per_sample = loss_per_sample * weights_per_sample
 
