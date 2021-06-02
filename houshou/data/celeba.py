@@ -144,6 +144,8 @@ class CelebA(TripletsAttributeDataModule):
             else:
                 raise ValueError()
 
+            attributes_support = self.calc_attribute_support(attrs_)
+
             split_dataset = CelebADataset(
                 os.path.join(self.data_dir, self.image_dir),
                 self.target_type,
@@ -154,6 +156,7 @@ class CelebA(TripletsAttributeDataModule):
                 landmarks_aligns_,
                 attrs_,
                 attr_names,
+                attributes_support,
             )
 
             if split == "train":
@@ -182,6 +185,7 @@ class CelebADataset(Dataset):
         landmarks_aligns: torch.Tensor,
         attributes: torch.Tensor,
         attribute_names: List[str],
+        attributes_support: torch.Tensor,
     ) -> None:
         super().__init__()
         self.data_dir = data_dir
@@ -193,6 +197,7 @@ class CelebADataset(Dataset):
         self.landmarks_aligns = landmarks_aligns
         self.attributes = attributes
         self.attribute_names = attribute_names
+        self.attributes_support = attributes_support
 
     def __len__(self):
         return len(self.filenames)

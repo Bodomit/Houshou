@@ -66,6 +66,9 @@ class CelebATests(unittest.TestCase):
             assert len(target[1]) == 2 and len(target[1].shape) == 1
             break
 
+    def test_calc_attributes_support(self):
+        assert self.dataset_module.test.attributes_support.shape[0] == 4
+
 
 @pytest.mark.local
 class TripletFriendlyRandomSamplerTests(unittest.TestCase):

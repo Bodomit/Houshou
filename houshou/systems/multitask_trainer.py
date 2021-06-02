@@ -2,6 +2,7 @@ import os
 import shutil
 
 import torch
+from torch.functional import Tensor
 import torch.nn.functional as F
 import pytorch_lightning as pl
 
@@ -25,6 +26,7 @@ class MultitaskTrainer(pl.LightningModule):
         lambda_value: float,
         learning_rate: float,
         verifier_args: Dict,
+        weight_attributes: bool,
         **kwargs,
     ) -> None:
         super().__init__()
@@ -37,6 +39,7 @@ class MultitaskTrainer(pl.LightningModule):
         self.verifier = (
             CVThresholdingVerifier(**verifier_args) if verifier_args else None
         )
+        self.weight_attributes = weight_attributes
 
         # Metrics
         metrics = MetricCollection(
@@ -58,6 +61,20 @@ class MultitaskTrainer(pl.LightningModule):
         if self.trainer.fast_dev_run:
             shutil.rmtree(dir, ignore_errors=True)
         os.makedirs(dir, exist_ok=True)
+
+        # Calculate Attribute Weights
+        dataloader = self.train_dataloader()
+        assert isinstance(dataloader, DataLoader)
+        support: torch.Tensor = dataloader.dataset.attributes_support  # type: ignore
+
+        if self.weight_attributes:
+            attribute_weights = 1 / support
+            attribute_weights = (
+                attribute_weights / attribute_weights.sum() * len(attribute_weights)
+            )
+            self.attribute_weights = attribute_weights
+        else:
+            self.attribute_weights = torch.ones_like(support)
 
         # Set up the verification scenario tester.
         if self.verifier is not None:
@@ -191,7 +208,7 @@ class MultitaskTrainer(pl.LightningModule):
         prefix: str = "loss_",
     ) -> Tuple[torch.Tensor, Dict[str, torch.Tensor]]:
 
-        losses = loss_func(embeddings, pred_attribute, yb, ab)
+        losses = loss_func(embeddings, pred_attribute, yb, ab, self.attribute_weights)
 
         if isinstance(losses, tuple):
             total_loss, sub_losses = losses
