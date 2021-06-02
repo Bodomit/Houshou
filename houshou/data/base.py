@@ -1,6 +1,7 @@
 import os
 import warnings
 
+import torch
 from torch.utils.data import DataLoader
 import pytorch_lightning as pl
 import ruyaml as yaml
@@ -149,3 +150,8 @@ class TripletsAttributeDataModule(pl.LightningDataModule):
                     + " not in attributes for dataset."
                 )
         return indexs
+
+    @staticmethod
+    def calc_attribute_support(attributes: torch.Tensor) -> torch.Tensor:
+        _, c = attributes.unique(return_counts=True, dim=0)
+        return c

@@ -22,7 +22,8 @@ class SHM_UniformKLDivergence(SemiHardTripletMiner):
         embeddings: torch.Tensor,
         attribute_pred: torch.Tensor,
         labels: torch.Tensor,
-        attribute: Optional[torch.Tensor],
+        attribute: torch.Tensor,
+        attribute_weights: torch.Tensor,
         pdist_matrix: torch.Tensor = None,
         adjacency_not: torch.Tensor = None,
         **kwargs
@@ -36,6 +37,13 @@ class SHM_UniformKLDivergence(SemiHardTripletMiner):
 
         expanded_target = self.target_distribution.expand_as(attribute_pred)
         pred_log_softmax = F.log_softmax(attribute_pred, dim=1)
-        loss = F.kl_div(pred_log_softmax, expanded_target, reduction="batchmean")
-        loss = loss.clamp(min=0.0)
-        return loss
+        loss = F.kl_div(pred_log_softmax, expanded_target, reduction="none")
+
+        weights_per_sample = attribute_weights[attribute].squeeze()
+        loss_per_sample = loss.sum(1).squeeze()
+        assert weights_per_sample.shape == loss_per_sample.shape
+        loss_per_sample = loss_per_sample * weights_per_sample
+
+        loss_reduced = loss_per_sample.sum() / loss_per_sample.size()[0]
+        loss_reduced = loss_reduced.clamp(min=0.0)
+        return loss_reduced

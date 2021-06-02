@@ -2,6 +2,7 @@ import os
 import shutil
 
 import torch
+from torch.functional import Tensor
 import torch.nn.functional as F
 import pytorch_lightning as pl
 
@@ -25,6 +26,7 @@ class MultitaskTrainer(pl.LightningModule):
         lambda_value: float,
         learning_rate: float,
         verifier_args: Dict,
+        weight_attributes: bool,
         **kwargs,
     ) -> None:
         super().__init__()
@@ -37,6 +39,7 @@ class MultitaskTrainer(pl.LightningModule):
         self.verifier = (
             CVThresholdingVerifier(**verifier_args) if verifier_args else None
         )
+        self.weight_attributes = weight_attributes
 
         # Metrics
         metrics = MetricCollection(
@@ -58,6 +61,21 @@ class MultitaskTrainer(pl.LightningModule):
         if self.trainer.fast_dev_run:
             shutil.rmtree(dir, ignore_errors=True)
         os.makedirs(dir, exist_ok=True)
+
+        # Calculate Attribute Weights
+        dataloader = self.train_dataloader()
+        assert isinstance(dataloader, DataLoader)
+        support: torch.Tensor = dataloader.dataset.attributes_support  # type: ignore
+
+        if self.weight_attributes:
+            attribute_weights = 1 / support
+            attribute_weights = (
+                attribute_weights / attribute_weights.sum() * len(attribute_weights)
+            )
+            self.attribute_weights = attribute_weights
+        else:
+            self.attribute_weights = torch.ones_like(support, dtype=torch.float)
+        self.attribute_weights = self.attribute_weights.to(self.device)
 
         # Set up the verification scenario tester.
         if self.verifier is not None:
@@ -143,37 +161,6 @@ class MultitaskTrainer(pl.LightningModule):
             self.log("valid_auc", auc)
             self.log_dict(labelled_apap)
 
-    def on_train_end(self) -> None:
-        assert self.on_gpu
-        assert isinstance(self.device, torch.device)
-
-        if self.verifier is None:
-            return
-
-        (
-            metrics_rocs,
-            per_attribute_pair_metrics_rocs,
-        ) = self.verifier.cv_thresholding_verification(self.model, self.device)
-
-        val_results_path = os.path.join(
-            self.trainer.log_dir or self.trainer.default_root_dir,
-            "on_validation_end_verification",
-        )
-        os.makedirs(val_results_path, exist_ok=True)
-
-        # Save the combined cv verification results.
-        save_cv_verification_results(metrics_rocs, val_results_path, "_all")
-
-        # Save the attribuet pair results.
-        for ap in per_attribute_pair_metrics_rocs:
-            ap_suffix = f"_{ap[0]}_{ap[1]}"
-            save_cv_verification_results(
-                per_attribute_pair_metrics_rocs[ap], val_results_path, ap_suffix
-            )
-
-        # Final cleanup.
-        super().on_fit_end()
-
     def forward(self, x):
         return self.model(x)
 
@@ -188,10 +175,10 @@ class MultitaskTrainer(pl.LightningModule):
         ab: torch.Tensor,
         embeddings: torch.Tensor,
         pred_attribute: torch.Tensor,
-        prefix: str = "loss_",
+        prefix: str = "loss/",
     ) -> Tuple[torch.Tensor, Dict[str, torch.Tensor]]:
 
-        losses = loss_func(embeddings, pred_attribute, yb, ab)
+        losses = loss_func(embeddings, pred_attribute, yb, ab, self.attribute_weights)
 
         if isinstance(losses, tuple):
             total_loss, sub_losses = losses

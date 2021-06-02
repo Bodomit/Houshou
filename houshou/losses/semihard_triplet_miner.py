@@ -79,9 +79,10 @@ class SemiHardTripletMiner(TripletMiner):
     def forward(
         self,
         embeddings: torch.Tensor,
-        attribute_pred: Optional[torch.Tensor],
+        attribute_pred: torch.Tensor,
         labels: torch.Tensor,
-        attribute: Optional[torch.Tensor] = None,
+        attribute: torch.Tensor,
+        attribute_weights: torch.Tensor,
     ):
         embeddings = embeddings.to(torch.float32)
         labels = torch.unsqueeze(labels, 1)
@@ -147,6 +148,7 @@ class SemiHardTripletMiner(TripletMiner):
                 attribute_pred,
                 labels,
                 attribute,
+                attribute_weights,
                 pdist_matrix=pdist_matrix,
                 adjacency_not=adjacency_not,
             )
@@ -162,9 +164,10 @@ class SemiHardTripletMiner(TripletMiner):
     def calc_penalty(
         self,
         embeddings: torch.Tensor,
-        attribute_pred: Optional[torch.Tensor],
+        attribute_pred: torch.Tensor,
         labels: torch.Tensor,
-        attribute: Optional[torch.Tensor],
+        attribute: torch.Tensor,
+        attribute_weights: torch.Tensor,
         **kwargs
     ):
         raise NotImplementedError

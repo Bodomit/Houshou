@@ -25,6 +25,7 @@ class VGGFace2Dataset(Dataset):
         classes_to_idx: Dict[str, int],
         attributes: torch.Tensor,
         attribute_names: List[str],
+        attributes_support: torch.Tensor,
         target_type: List[str],
         transform: transforms.Compose,
     ) -> None:
@@ -35,6 +36,7 @@ class VGGFace2Dataset(Dataset):
         self.classes_to_idx = classes_to_idx
         self.attributes = attributes
         self.attribute_names = attribute_names
+        self.attributes_support = attributes_support
         self.target_type = target_type
         self.transform = transform
 
@@ -242,6 +244,8 @@ class VGGFace2(TripletsAttributeDataModule):
         selected_attribute_indexs = self.get_indexes(attr_names, self.attribute)
         attributes_ = attributes_[:, selected_attribute_indexs]
 
+        attributes_support = self.calc_attribute_support(attributes_)
+
         # One last sanity check
         assert len(identities) == len(attributes_) == len(samples)
 
@@ -252,6 +256,7 @@ class VGGFace2(TripletsAttributeDataModule):
             class_to_idx,
             attributes_,
             attr_names,
+            attributes_support,
             target_type,
             transform,
         )

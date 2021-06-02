@@ -13,9 +13,17 @@ class TwoStageMultitaskTrainer(MultitaskTrainer):
         lambda_value: float,
         learning_rate: float,
         verifier_args: Dict,
+        weight_attributes: bool,
         **kwargs
     ) -> None:
-        super().__init__(loss, lambda_value, learning_rate, verifier_args, **kwargs)
+        super().__init__(
+            loss,
+            lambda_value,
+            learning_rate,
+            verifier_args,
+            weight_attributes,
+            **kwargs
+        )
 
     def training_step(self, batch, batch_idx, optimizer_idx):
         xb, (yb, ab) = batch
@@ -29,7 +37,7 @@ class TwoStageMultitaskTrainer(MultitaskTrainer):
 
         # Train attribute model only.
         if optimizer_idx == 0:
-            attribute_loss = F.cross_entropy(attribute_pred, ab)
+            attribute_loss = F.cross_entropy(attribute_pred, ab, self.attribute_weights)
             self.log("loss/stage1", attribute_loss, on_step=True, on_epoch=True)
             return attribute_loss
 

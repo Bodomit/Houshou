@@ -59,6 +59,7 @@ model:
   loss: SHM_UNIFORMKLDIVERGENCE
   lambda_value: 0.5
   learning_rate: 0.01
+  weight_attributes: false
   verifier_args:
     batch_size: 512
     debug: false
