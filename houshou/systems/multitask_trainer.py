@@ -161,37 +161,6 @@ class MultitaskTrainer(pl.LightningModule):
             self.log("valid_auc", auc)
             self.log_dict(labelled_apap)
 
-    def on_train_end(self) -> None:
-        assert self.on_gpu
-        assert isinstance(self.device, torch.device)
-
-        if self.verifier is None:
-            return
-
-        (
-            metrics_rocs,
-            per_attribute_pair_metrics_rocs,
-        ) = self.verifier.cv_thresholding_verification(self.model, self.device)
-
-        val_results_path = os.path.join(
-            self.trainer.log_dir or self.trainer.default_root_dir,
-            "on_validation_end_verification",
-        )
-        os.makedirs(val_results_path, exist_ok=True)
-
-        # Save the combined cv verification results.
-        save_cv_verification_results(metrics_rocs, val_results_path, "_all")
-
-        # Save the attribuet pair results.
-        for ap in per_attribute_pair_metrics_rocs:
-            ap_suffix = f"_{ap[0]}_{ap[1]}"
-            save_cv_verification_results(
-                per_attribute_pair_metrics_rocs[ap], val_results_path, ap_suffix
-            )
-
-        # Final cleanup.
-        super().on_fit_end()
-
     def forward(self, x):
         return self.model(x)
 
