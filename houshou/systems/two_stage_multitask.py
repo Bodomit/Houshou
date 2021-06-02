@@ -37,7 +37,7 @@ class TwoStageMultitaskTrainer(MultitaskTrainer):
 
         # Train attribute model only.
         if optimizer_idx == 0:
-            attribute_loss = F.cross_entropy(attribute_pred, ab)
+            attribute_loss = F.cross_entropy(attribute_pred, ab, self.attribute_weights)
             self.log("loss/stage1", attribute_loss, on_step=True, on_epoch=True)
             return attribute_loss
 
