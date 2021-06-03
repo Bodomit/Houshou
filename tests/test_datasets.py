@@ -1,15 +1,13 @@
 import os
-from typing import Tuple
 import unittest
+from typing import Tuple
+
 import pytest
-
-from PIL.Image import Image
-
 import torch
-from torch.utils.data import DataLoader
-
-from houshou.data import CelebA, VGGFace2
+from houshou.data import CelebA, Market1501, VGGFace2
 from houshou.data.samplers import TripletBatchRandomSampler
+from PIL.Image import Image
+from torch.utils.data import DataLoader
 
 POSSIBLE_DATASET_ROOT_DIRS = ["/mnt/e/datasets", "~/datasets"]
 
@@ -178,6 +176,35 @@ class VGGFace2Tests(unittest.TestCase):
             break
 
     @pytest.mark.local
+    def test_load_test(self):
+        assert self.dataset_module.test
+        assert len(self.dataset_module.test) == 169157
+
+        for image, target in self.dataset_module.test:
+            assert image is not None
+            assert isinstance(image, torch.Tensor)
+            assert len(target) == 2
+            assert isinstance(target[0], torch.Tensor)
+            assert isinstance(target[1], torch.Tensor)
+            assert isinstance(target[0].item(), int)
+            assert target[1].dtype == torch.int64
+            assert len(target[1]) == 2 and len(target[1].shape) == 1
+            break
+
+
+class Market1501Tests(unittest.TestCase):
+    def setUp(self):
+        self.root = get_root_dir()
+        self.data_dir = os.path.join(self.root, "Market-1501")
+        self.batch_size = 2
+        self.dataset_module = Market1501(
+            self.batch_size,
+            1000,
+            ["Male", "Bangs"],
+            self.data_dir,
+        )
+        self.dataset_module.setup(None)
+
     def test_load_test(self):
         assert self.dataset_module.test
         assert len(self.dataset_module.test) == 169157

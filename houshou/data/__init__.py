@@ -2,11 +2,11 @@ from enum import Enum, auto
 from typing import Union
 
 from torch.utils.data import Dataset
-import pytorch_lightning as pl
 
-from .celeba import CelebA
-from .vggface2 import VGGFace2
 from .base import TripletsAttributeDataModule
+from .celeba import CelebA
+from .market_1501 import Market1501
+from .vggface2 import VGGFace2
 
 
 class DATASET(Enum):
