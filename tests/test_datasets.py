@@ -200,14 +200,15 @@ class Market1501Tests(unittest.TestCase):
         self.dataset_module = Market1501(
             self.batch_size,
             1000,
-            ["Male", "Bangs"],
+            ["gender", "backpack"],
             self.data_dir,
         )
-        self.dataset_module.setup(None)
+        self.dataset_module.setup("test")
 
     def test_load_test(self):
         assert self.dataset_module.test
-        assert len(self.dataset_module.test) == 169157
+        assert len(self.dataset_module.test) == 13115
+        assert len(self.dataset_module.query) == 3368
 
         for image, target in self.dataset_module.test:
             assert image is not None
