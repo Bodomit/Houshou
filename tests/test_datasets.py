@@ -203,7 +203,7 @@ class Market1501Tests(unittest.TestCase):
             ["gender", "backpack"],
             self.data_dir,
         )
-        self.dataset_module.setup("test")
+        self.dataset_module.setup(None)
 
     def test_load_test(self):
         assert self.dataset_module.test
@@ -211,6 +211,35 @@ class Market1501Tests(unittest.TestCase):
         assert len(self.dataset_module.query) == 3368
 
         for image, target in self.dataset_module.test:
+            assert image is not None
+            assert isinstance(image, torch.Tensor)
+            assert len(target) == 2
+            assert isinstance(target[0], torch.Tensor)
+            assert isinstance(target[1], torch.Tensor)
+            assert isinstance(target[0].item(), int)
+            assert target[1].dtype == torch.int64
+            assert len(target[1]) == 2 and len(target[1].shape) == 1
+            break
+
+    def test_load_train_val(self):
+        
+        train_classes = set(self.dataset_module.train.identities)
+        valid_classes = set(self.dataset_module.valid.identities)
+
+        assert set.intersection(train_classes, valid_classes) == set([])
+
+        for image, target in self.dataset_module.train:
+            assert image is not None
+            assert isinstance(image, torch.Tensor)
+            assert len(target) == 2
+            assert isinstance(target[0], torch.Tensor)
+            assert isinstance(target[1], torch.Tensor)
+            assert isinstance(target[0].item(), int)
+            assert target[1].dtype == torch.int64
+            assert len(target[1]) == 2 and len(target[1].shape) == 1
+            break
+
+        for image, target in self.dataset_module.valid:
             assert image is not None
             assert isinstance(image, torch.Tensor)
             assert len(target) == 2

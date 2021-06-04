@@ -59,7 +59,9 @@ class Market1501(TripletsAttributeDataModule):
 
         if stage is None or stage == "fit":
             train_filenames = self.read_filenames("bounding_box_train")
-            self.train, self.valid = self._process_train_valid(raw_train_attributes)
+            self.train, self.valid = self._process_train_valid(
+                raw_train_attributes, train_filenames
+            )
 
         if stage is None or stage == "test":
             test_filenames = self.read_filenames("bounding_box_test")
@@ -153,14 +155,34 @@ class Market1501(TripletsAttributeDataModule):
         return attributes
 
     def _process_train_valid(
-        self, train_attributes: pandas.DataFrame
+        self, train_attributes: pandas.DataFrame, filenames: Set[str]
     ) -> Tuple[Dataset, Dataset]:
-        raise NotImplementedError
 
-    def _process_test(
-        self, test_attributes: pandas.DataFrame, is_query: bool
-    ) -> Tuple[Dataset, Dataset]:
-        raise NotImplementedError
+        filenames_ = list(sorted(filenames))
+        identities = self.parse_ids(filenames_)
+
+        val_classes = self.get_val_set_classes(
+            set(identities), self.valid_split, self.valid_split_seed
+        )
+
+        train_filenames: Set[str] = set([])
+        val_filenames: Set[str] = set([])
+
+        assert len(identities) == len(filenames_)
+        for identity, filename in zip(identities, filenames_):
+            if identity in val_classes:
+                val_filenames.add(filename)
+            else:
+                train_filenames.add(filename)
+
+        train = self.construct_dataset(
+            train_filenames, train_attributes, self.train_transforms
+        )
+        val = self.construct_dataset(
+            val_filenames, train_attributes, self.val_transforms
+        )
+
+        return train, val
 
 
 class Market1501Dataset(Dataset):
