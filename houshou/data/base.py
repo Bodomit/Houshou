@@ -1,14 +1,14 @@
 import os
 import warnings
+from typing import List, Optional, Set
 
-import torch
-from torch.utils.data import DataLoader
+import numpy as np
 import pytorch_lightning as pl
 import ruyaml as yaml
+import torch
+from torch.utils.data import DataLoader
 
 from .samplers import TripletBatchRandomSampler
-
-from typing import List, Optional
 
 
 class TripletsAttributeDataModule(pl.LightningDataModule):
@@ -155,3 +155,13 @@ class TripletsAttributeDataModule(pl.LightningDataModule):
     def calc_attribute_support(attributes: torch.Tensor) -> torch.Tensor:
         _, c = attributes.unique(return_counts=True, dim=0)
         return c
+
+    @staticmethod
+    def get_val_set_classes(
+        classes: Set[str], valid_split: float, valid_split_seed: int
+    ) -> Set[str]:
+        assert valid_split >= 0 and valid_split < 1.0
+        n_valid_set_classes = int(len(classes) * valid_split)
+        rng = np.random.default_rng(valid_split_seed)
+        valid_classes = rng.choice(sorted(classes), size=n_valid_set_classes)
+        return set(valid_classes)

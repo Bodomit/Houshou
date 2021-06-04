@@ -1,12 +1,10 @@
-from functools import partial
 import os
-
+from functools import partial
 from typing import Any, Callable, Counter, Dict, List, Optional, Set, Tuple
 
-import pandas
 import numpy as np
+import pandas
 import PIL
-
 import torch
 from torch.utils.data import Dataset
 from torchvision import transforms
@@ -199,16 +197,6 @@ class VGGFace2(TripletsAttributeDataModule):
         )
 
         return test_dataset
-
-    @staticmethod
-    def get_val_set_classes(
-        classes: Set[str], valid_split: float, valid_split_seed: int
-    ) -> Set[str]:
-        assert valid_split >= 0 and valid_split < 1.0
-        n_valid_set_classes = int(len(classes) * valid_split)
-        rng = np.random.default_rng(valid_split_seed)
-        valid_classes = rng.choice(sorted(classes), size=n_valid_set_classes)
-        return set(valid_classes)
 
     def construct_dataset(
         self,

@@ -1,0 +1,18 @@
+trainer:
+  default_root_dir: /home/gbrown/results/houshou/semihard_mining/debug
+model:
+  loss: SHM_UNIFORMKLDIVERGENCE
+  learning_rate: 0.01
+  verifier_args:
+    batch_size: 512
+    debug: false
+    seed: 42
+    n_splits: 10
+data:
+  class_path: houshou.data.Market1501
+  init_args:
+    data_dir: Market-1501
+    batch_size: 512
+    buffer_size: 5000
+    attribute:
+      - gender

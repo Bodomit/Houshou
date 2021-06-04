@@ -52,7 +52,7 @@ class TripletBatchRandomSampler(Sampler[List[int]]):
             max_buffer_size = self.buffer_size
 
         # Pre-populate the buffer.
-        while len(buffer) < max_buffer_size:
+        while len(buffer) < max_buffer_size and real_idx < len(identity_map):
             buffer.append(identity_map[real_idx])
             real_idx += 1
 
