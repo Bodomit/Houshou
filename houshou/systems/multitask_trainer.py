@@ -149,7 +149,14 @@ class MultitaskTrainer(pl.LightningModule):
         assert isinstance(self.device, torch.device)
 
         if self.verifier is not None:
-            auc, auc_per_attribute_pair = self.verifier.roc_auc(self.model, self.device)
+
+            try:
+                auc, auc_per_attribute_pair = self.verifier.roc_auc(
+                    self.model, self.device
+                )
+            except ValueError as ex:
+                warning("Verification testing failed. Skipping: " + str(ex))
+                return
 
             def newkey(attribute_pair: Tuple[int, int]):
                 return f"valid_auc_{attribute_pair[0]}_{attribute_pair[1]}"
