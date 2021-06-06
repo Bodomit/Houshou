@@ -1,22 +1,21 @@
 import os
 from argparse import ArgumentParser
-
 from typing import List
 
+import pytorch_lightning as pl
 import torch
 from torch.utils.data.dataloader import DataLoader
-import pytorch_lightning as pl
 
-from houshou.systems import TwoStageMultitaskTrainer
-from houshou.models import FeatureModel
-from houshou.data import CelebA, VGGFace2, TripletsAttributeDataModule
-from houshou.utils import find_last_epoch_path, save_cv_verification_results
+from houshou.data import CelebA, Market1501, VGGFace2
 from houshou.metrics import CVThresholdingVerifier
+from houshou.models import FeatureModel
+from houshou.systems import TwoStageMultitaskTrainer
+from houshou.utils import find_last_epoch_path, save_cv_verification_results
 
 pl.seed_everything(42, workers=True)
 
 
-def main(experiment_path: str, batch_size: int, is_debug: bool):
+def main(experiment_path: str, batch_size: int, is_debug: bool, is_fullbody: bool):
     feature_model_checkpoint_path = find_last_epoch_path(experiment_path)
 
     print("Experiment Directory: ", experiment_path)
@@ -24,7 +23,9 @@ def main(experiment_path: str, batch_size: int, is_debug: bool):
 
     # Load the multitask model and get the featrue model.
     multitask_trainer = TwoStageMultitaskTrainer.load_from_checkpoint(
-        feature_model_checkpoint_path, verifier_args=None
+        feature_model_checkpoint_path,
+        verifier_args=None,
+        weight_attributes="weighted" in feature_model_checkpoint_path,
     )
     assert isinstance(multitask_trainer, TwoStageMultitaskTrainer)
     feature_model = multitask_trainer.model.feature_model
@@ -33,11 +34,13 @@ def main(experiment_path: str, batch_size: int, is_debug: bool):
     feature_model.freeze()
 
     # Construct the datamodules.
-    datamodules: List[TripletsAttributeDataModule] = [
-        VGGFace2(batch_size, None, ["Male"]),
-        CelebA(batch_size, None, ["Male"]),
-    ]
-
+    if is_fullbody:
+        datamodules = [Market1501(batch_size, None, ["gender"])]
+    else:
+        datamodules = [
+            VGGFace2(batch_size, None, ["Male"]),
+            CelebA(batch_size, None, ["Male"]),
+        ]
     # Get the device.
     device = torch.device("cuda:0")
     feature_model.to(device)
@@ -77,5 +80,6 @@ if __name__ == "__main__":
     parser.add_argument("experiment_path")
     parser.add_argument("--batch-size", type=int, default=512)
     parser.add_argument("--debug", action="store_true")
+    parser.add_argument("--fullbody", action="store_true")
     args = parser.parse_args()
-    main(args.experiment_path, args.batch_size, args.debug)
+    main(args.experiment_path, args.batch_size, args.debug, args.fullbody)

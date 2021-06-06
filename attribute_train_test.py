@@ -1,19 +1,21 @@
 import os
 from argparse import ArgumentParser
 
-from ruyaml import YAML
 import pytorch_lightning as pl
 from pytorch_lightning.loggers import CSVLogger, TensorBoardLogger
+from ruyaml import YAML
 
+from houshou.data import CelebA, Market1501, VGGFace2
 from houshou.models import FeatureModel
-from houshou.systems import TwoStageMultitaskTrainer, AttributeExtractionTask
-from houshou.data import CelebA, VGGFace2
+from houshou.systems import AttributeExtractionTask, TwoStageMultitaskTrainer
 from houshou.utils import find_last_epoch_path
 
 pl.seed_everything(42, workers=True)
 
 
-def main(experiment_path: str, batch_size: int, is_fast_dev_run: bool):
+def main(
+    experiment_path: str, batch_size: int, is_fast_dev_run: bool, is_fullbody: bool
+):
     # Get the path to the last checkpoint.
     feature_model_checkpoint_path = find_last_epoch_path(experiment_path)
 
@@ -22,7 +24,9 @@ def main(experiment_path: str, batch_size: int, is_fast_dev_run: bool):
 
     # Load the multitask model and get the featrue model.
     multitask_trainer = TwoStageMultitaskTrainer.load_from_checkpoint(
-        feature_model_checkpoint_path, verifier_args=None
+        feature_model_checkpoint_path,
+        verifier_args=None,
+        weight_attributes="weighted" in feature_model_checkpoint_path,
     )
     assert isinstance(multitask_trainer, TwoStageMultitaskTrainer)
     feature_model = multitask_trainer.model.feature_model
@@ -31,10 +35,13 @@ def main(experiment_path: str, batch_size: int, is_fast_dev_run: bool):
     feature_model.freeze()
 
     # Construct the datamodules.
-    datamodules = [
-        VGGFace2(batch_size, None, ["Male"]),
-        CelebA(batch_size, None, ["Male"]),
-    ]
+    if is_fullbody:
+        datamodules = [Market1501(batch_size, None, ["gender"])]
+    else:
+        datamodules = [
+            VGGFace2(batch_size, None, ["Male"]),
+            CelebA(batch_size, None, ["Male"]),
+        ]
 
     yaml = YAML(typ="safe")
 
@@ -86,5 +93,6 @@ if __name__ == "__main__":
     parser.add_argument("experiment_path")
     parser.add_argument("--batch-size", type=int, default=512)
     parser.add_argument("--debug", action="store_true")
+    parser.add_argument("--fullbody", action="store_true")
     args = parser.parse_args()
-    main(args.experiment_path, args.batch_size, args.debug)
+    main(args.experiment_path, args.batch_size, args.debug, args.fullbody)
