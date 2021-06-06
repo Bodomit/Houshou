@@ -1,22 +1,19 @@
 import os
 import shutil
+import warnings
+from typing import Any, Dict, Tuple
 
-import torch
-from torch.functional import Tensor
-import torch.nn.functional as F
 import pytorch_lightning as pl
-
-from torch.utils.data.dataloader import DataLoader
-from torchmetrics.classification import Accuracy, Precision, Recall, F1
-from torchmetrics.classification import ConfusionMatrix
-from torchmetrics.collections import MetricCollection
-
+import torch
+import torch.nn.functional as F
 from houshou.losses import LOSS, get_loss
 from houshou.metrics import BalancedAccuracy, CVThresholdingVerifier
 from houshou.models import MultiTaskTrainingModel
 from houshou.utils import save_cv_verification_results
-
-from typing import Any, Tuple, Dict
+from torch.functional import Tensor
+from torch.utils.data.dataloader import DataLoader
+from torchmetrics.classification import F1, Accuracy, ConfusionMatrix, Precision, Recall
+from torchmetrics.collections import MetricCollection
 
 
 class MultitaskTrainer(pl.LightningModule):
@@ -155,7 +152,7 @@ class MultitaskTrainer(pl.LightningModule):
                     self.model, self.device
                 )
             except ValueError as ex:
-                warning("Verification testing failed. Skipping: " + str(ex))
+                warnings.warn("Verification testing failed. Skipping: " + str(ex))
                 return
 
             def newkey(attribute_pair: Tuple[int, int]):
