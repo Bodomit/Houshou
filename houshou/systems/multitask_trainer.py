@@ -27,7 +27,7 @@ class MultitaskTrainer(pl.LightningModule):
         **kwargs,
     ) -> None:
         super().__init__()
-        self.save_hyperparameters("loss", "lambda_value", "learning_rate")
+        self.save_hyperparameters()
 
         self.model = MultiTaskTrainingModel(**kwargs)
         self.lambda_value = lambda_value
