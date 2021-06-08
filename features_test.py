@@ -23,9 +23,7 @@ def main(experiment_path: str, batch_size: int, is_debug: bool, is_fullbody: boo
 
     # Load the multitask model and get the featrue model.
     multitask_trainer = TwoStageMultitaskTrainer.load_from_checkpoint(
-        feature_model_checkpoint_path,
-        verifier_args=None,
-        weight_attributes="weighted" in feature_model_checkpoint_path,
+        feature_model_checkpoint_path, verifier_args=None
     )
     assert isinstance(multitask_trainer, TwoStageMultitaskTrainer)
     feature_model = multitask_trainer.model.feature_model
