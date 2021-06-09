@@ -57,4 +57,4 @@ class CrossEntropy(LossBase):
         attribute: torch.Tensor,
         attribute_weights: torch.Tensor,
     ):
-        return F.cross_entropy(embeddings, labels, attribute_weights)
+        return F.cross_entropy(embeddings, labels)

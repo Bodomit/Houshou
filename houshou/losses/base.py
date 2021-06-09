@@ -26,18 +26,18 @@ class WeightedMultitaskLoss(LossBase):
 
     def forward(
         self,
-        embeddings: torch.Tensor,
+        embeddings_or_logits: torch.Tensor,
         attribute_pred: torch.Tensor,
         labels: torch.Tensor,
         attribute: torch.Tensor,
         attribute_weights: torch.Tensor,
     ):
         l_f = self.loss_f(
-            embeddings, attribute_pred, labels, attribute, attribute_weights
+            embeddings_or_logits, attribute_pred, labels, attribute, attribute_weights
         )
 
         l_a = self.loss_a(
-            embeddings, attribute_pred, labels, attribute, attribute_weights
+            embeddings_or_logits, attribute_pred, labels, attribute, attribute_weights
         )
 
         loss = (1 - self.lambda_value) * l_f + (self.lambda_value * l_a)

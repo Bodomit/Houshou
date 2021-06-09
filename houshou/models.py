@@ -1,9 +1,10 @@
-import torch
-import torch.nn as nn
-
-from facenet_pytorch import InceptionResnetV1
+from typing import Optional, Type
 
 import pytorch_lightning as pl
+import torch
+import torch.nn as nn
+from facenet_pytorch import InceptionResnetV1
+from pytorch_lightning.core.lightning import LightningModule
 
 
 class FeatureModel(pl.LightningModule):
@@ -16,6 +17,21 @@ class FeatureModel(pl.LightningModule):
 
     def forward(self, x):
         return self.resnet(x)
+
+
+class ClassificationModel(FeatureModel):
+    def __init__(self, n_classes: int, dropout_prob: float = 0.6, **kwargs) -> None:
+        super().__init__(dropout_prob=dropout_prob, **kwargs)
+        self.save_hyperparameters()
+        self.n_classes = n_classes
+
+        self.logits = nn.Linear(512, self.n_classes)
+
+    def forward(self, x):
+        features = self.resnet(x)
+        logits = self.logits(features)
+
+        return logits, features
 
 
 class AttributeExtractionModel(pl.LightningModule):
@@ -41,15 +57,20 @@ class MultiTaskTrainingModel(pl.LightningModule):
         feature_model_path: str = None,
         attribute_model_path: str = None,
         reverse_attribute_gradient: bool = False,
+        classification_training_scenario: bool = False,
         **kwargs
     ):
         super().__init__()
         self.save_hyperparameters()
 
-        if feature_model_path:
-            self.feature_model = FeatureModel.load_from_checkpoint(feature_model_path)
+        if classification_training_scenario:
+            model_type = ClassificationModel
         else:
-            self.feature_model = FeatureModel(**kwargs)
+            model_type = FeatureModel
+
+        self.feature_model = self._load_or_create_model(
+            model_type, feature_model_path, **kwargs
+        )
 
         if attribute_model_path:
             self.attribute_model = AttributeExtractionModel.load_from_checkpoint(
@@ -60,14 +81,30 @@ class MultiTaskTrainingModel(pl.LightningModule):
 
         self.reverse_attribute_gradient = reverse_attribute_gradient
 
+    def _load_or_create_model(
+        self,
+        model_type: Type[pl.LightningModule],
+        checkpoint_path: Optional[str],
+        **kwargs
+    ) -> pl.LightningModule:
+        if checkpoint_path:
+            return model_type.load_from_checkpoint(checkpoint_path)
+        else:
+            return model_type(**kwargs)
+
     def forward(self, x):
-        features = self.feature_model(x)
+        if isinstance(self.feature_model, ClassificationModel):
+            logits, features = self.feature_model(x)
+            x = logits
+        else:
+            features = self.feature_model(x)
+            x = features
 
         if self.reverse_attribute_gradient:
             features = GradReverse.apply(features)
 
         attribute = self.attribute_model(features)
-        return features, attribute
+        return x, attribute
 
 
 class FullAttributeExtractionModel(MultiTaskTrainingModel):

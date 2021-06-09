@@ -1,4 +1,4 @@
-from typing import Dict
+from typing import Dict, Optional
 
 import torch
 import torch.nn.functional as F
@@ -16,6 +16,8 @@ class TwoStageMultitaskTrainer(MultitaskTrainer):
         learning_rate: float,
         verifier_args: Dict,
         weight_attributes: bool,
+        classification_training_scenario: bool,
+        n_classes: Optional[int] = None,
         **kwargs
     ) -> None:
         super().__init__(
@@ -25,6 +27,8 @@ class TwoStageMultitaskTrainer(MultitaskTrainer):
             learning_rate,
             verifier_args,
             weight_attributes,
+            classification_training_scenario,
+            n_classes,
             **kwargs
         )
         self.automatic_optimization = False
@@ -42,7 +46,7 @@ class TwoStageMultitaskTrainer(MultitaskTrainer):
         self.model.feature_model.requires_grad_(False)
         self.model.attribute_model.requires_grad_(True)
 
-        embeddings, attribute_pred = self.model(xb)
+        _, attribute_pred = self.model(xb)
 
         attribute_loss = F.cross_entropy(attribute_pred, ab, self.attribute_weights)
         self.log("loss/stage1", attribute_loss, on_step=True, on_epoch=True)
@@ -54,16 +58,21 @@ class TwoStageMultitaskTrainer(MultitaskTrainer):
         self.model.feature_model.requires_grad_(True)
         self.model.attribute_model.requires_grad_(False)
 
-        embeddings, attribute_pred = self.model(xb)
+        embeddings_or_logits, attribute_pred = self.model(xb)
 
         # Log metrics.
         metrics = self.training_step_attribute_metrics(ab, attribute_pred)
         self.log_dict(metrics)
 
         # Backprop the multi-task loss.
-        assert isinstance(embeddings, torch.Tensor)
+        assert isinstance(embeddings_or_logits, torch.Tensor)
         total_loss, sub_losses = self.get_totalloss_with_sublosses(
-            self.loss, yb, ab, embeddings, attribute_pred, prefix="loss/stage2/"
+            self.loss,
+            yb,
+            ab,
+            embeddings_or_logits,
+            attribute_pred,
+            prefix="loss/stage2/",
         )
         self.log("loss/stage2/total", total_loss, on_step=True, on_epoch=True)
         self.log_dict(sub_losses, on_step=True, on_epoch=True)

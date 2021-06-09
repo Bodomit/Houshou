@@ -1,17 +1,15 @@
+import itertools
 from collections import defaultdict
 from typing import Any, Dict, List, Optional, Set, Tuple
-import itertools
 
-import tqdm
 import numpy as np
 import pandas as pd
+import torch
+import tqdm
 from sklearn import metrics
 from sklearn.model_selection import KFold
-
-import torch
 from torch import nn
-from torch.utils.data import Dataset, DataLoader
-
+from torch.utils.data import DataLoader, Dataset
 from torchmetrics import Metric
 from torchmetrics.functional import stat_scores
 from torchmetrics.utilities.data import to_categorical
@@ -178,7 +176,7 @@ class Verifier:
             if isinstance(outputs, torch.Tensor):
                 features = outputs
             elif len(outputs) == 2:
-                features, _ = outputs
+                _, features = outputs
             else:
                 raise ValueError
 

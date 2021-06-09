@@ -205,6 +205,8 @@ class Market1501Dataset(Dataset):
         self.target_type = target_type
         self.transform = transform
 
+        self.classes = self.identities.unique()
+
         assert len(self.filenames) == len(self.identities) == len(self.attributes)
 
     def __len__(self):

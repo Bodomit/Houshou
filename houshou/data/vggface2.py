@@ -69,8 +69,8 @@ class VGGFace2(TripletsAttributeDataModule):
     def __init__(
         self,
         batch_size: int,
-        buffer_size: Optional[int],
         attribute: List[str],
+        buffer_size: Optional[int] = None,
         data_dir: str = "vggface2_MTCNN",
         valid_split: float = 0.05,
         valid_split_seed: int = 42,

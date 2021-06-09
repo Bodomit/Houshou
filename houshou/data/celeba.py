@@ -1,12 +1,11 @@
 import os
 from functools import partial
-
 from typing import Any, List, Optional
 
 import pandas
 import PIL
-
 import torch
+from numpy import unique
 from torch.utils.data import Dataset
 from torchvision import transforms
 
@@ -17,8 +16,8 @@ class CelebA(TripletsAttributeDataModule):
     def __init__(
         self,
         batch_size: int,
-        buffer_size: Optional[int],
         attribute: List[str],
+        buffer_size: Optional[int] = None,
         data_dir: str = "CelebA_MTCNN",
         use_png: bool = True,
         **kwargs
@@ -132,6 +131,13 @@ class CelebA(TripletsAttributeDataModule):
             attrs_ = torch.as_tensor(rm_diff(attrs)[mask].values)
             attrs_ = (attrs_ + 1) // 2  # map from {-1, 1} to {0, 1}
 
+            # Remap the identiteis to be contiguous (for classification training).
+            unique_identities, identity_map = identities_.unique(return_inverse=True)
+            local_unique_identities = torch.arange(
+                0, len(unique_identities), dtype=torch.int64
+            )
+            local_identities = local_unique_identities[identity_map]
+
             assert isinstance(attrs_, torch.Tensor)
             attrs_ = attrs_[:, selected_attribute_indexs]
 
@@ -151,7 +157,7 @@ class CelebA(TripletsAttributeDataModule):
                 self.target_type,
                 transform,
                 filenames,
-                identities_,
+                local_identities,
                 bboxes_,
                 landmarks_aligns_,
                 attrs_,
@@ -198,6 +204,8 @@ class CelebADataset(Dataset):
         self.attributes = attributes
         self.attribute_names = attribute_names
         self.attributes_support = attributes_support
+
+        self.classes = self.identities.unique()
 
     def __len__(self):
         return len(self.filenames)
