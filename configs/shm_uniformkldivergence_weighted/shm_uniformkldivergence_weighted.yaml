@@ -1,7 +1,8 @@
 trainer:
   default_root_dir: /home/gbrown/results/houshou/semihard_mining/debug
 model:
-  loss: SHM_UNIFORMKLDIVERGENCE
+  loss_f: SEMIHARD_MINED_TRIPLETS
+  loss_a: UNIFORM_KLDIVERGENCE
   learning_rate: 0.01
   weight_attributes: true
   verifier_args:

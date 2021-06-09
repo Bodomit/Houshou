@@ -20,7 +20,7 @@ def get_root_dir() -> str:
     raise ValueError("No dataset directory found.")
 
 
-@pytest.mark.local
+#@pytest.mark.local
 class CelebATests(unittest.TestCase):
     def setUp(self):
         self.root = get_root_dir()
@@ -37,6 +37,8 @@ class CelebATests(unittest.TestCase):
     def test_load_train(self):
         assert self.dataset_module.train is not None
         assert len(self.dataset_module.train) == 162484
+        assert len(self.dataset_module.train.classes) == 8192
+        assert self.dataset_module.train.identities.max() < 8192
 
         for image, target in self.dataset_module.train:
             assert image is not None
@@ -150,6 +152,12 @@ class VGGFace2Tests(unittest.TestCase):
     def test_load_train_val(self):
         trian_classes = set(s[1] for s in self.dataset_module.train.samples)
         valid_classes = set(s[1] for s in self.dataset_module.valid.samples)
+
+        assert len(trian_classes) == 8213
+        assert len(valid_classes) == 418
+
+        assert len(self.dataset_module.train) == 2989351
+        assert len(self.dataset_module.valid) == 149268
 
         assert set.intersection(trian_classes, valid_classes) == set([])
 

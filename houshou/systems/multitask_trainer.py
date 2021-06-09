@@ -1,12 +1,12 @@
 import os
 import shutil
 import warnings
-from typing import Any, Dict, Tuple
+from typing import Any, Dict, Optional, Tuple
 
 import pytorch_lightning as pl
 import torch
 import torch.nn.functional as F
-from houshou.losses import LOSS, get_loss
+from houshou.losses import LOSS, get_multitask_loss
 from houshou.metrics import BalancedAccuracy, CVThresholdingVerifier
 from houshou.models import MultiTaskTrainingModel
 from houshou.utils import save_cv_verification_results
@@ -19,20 +19,27 @@ from torchmetrics.collections import MetricCollection
 class MultitaskTrainer(pl.LightningModule):
     def __init__(
         self,
-        loss: str,
+        loss_f: str,
+        loss_a: str,
         lambda_value: float,
         learning_rate: float,
         verifier_args: Dict,
         weight_attributes: bool,
+        classification_training_scenario: bool,
+        n_classes: Optional[int] = None,
         **kwargs,
     ) -> None:
         super().__init__()
         self.save_hyperparameters()
 
-        self.model = MultiTaskTrainingModel(**kwargs)
+        self.model = MultiTaskTrainingModel(
+            classification_training_scenario=classification_training_scenario,
+            n_classes=n_classes,
+            **kwargs,
+        )
         self.lambda_value = lambda_value
         self.learning_rate = learning_rate
-        self.loss = get_loss(LOSS[loss], lambda_value=self.lambda_value)
+        self.loss = get_multitask_loss(LOSS[loss_f], LOSS[loss_a], self.lambda_value)
         self.verifier = (
             CVThresholdingVerifier(**verifier_args) if verifier_args else None
         )
@@ -84,9 +91,9 @@ class MultitaskTrainer(pl.LightningModule):
         xb, (yb, ab) = batch
         ab = ab.squeeze()
 
-        embeddings, attribute_pred = self.model(xb)
+        embeddings_or_logits, attribute_pred = self.model(xb)
         total_loss, sub_losses = self.get_totalloss_with_sublosses(
-            self.loss, yb, ab, embeddings, attribute_pred
+            self.loss, yb, ab, embeddings_or_logits, attribute_pred
         )
 
         self.log("loss", total_loss, on_step=True, on_epoch=True)
@@ -118,9 +125,9 @@ class MultitaskTrainer(pl.LightningModule):
 
     def validation_step(self, batch, batch_idx):
         xb, (yb, ab) = batch
-        embeddings, attribute_pred = self.model(xb)
+        embeddings_or_logits, attribute_pred = self.model(xb)
         total_loss, sub_losses = self.get_totalloss_with_sublosses(
-            self.loss, yb, ab, embeddings, attribute_pred
+            self.loss, yb, ab, embeddings_or_logits, attribute_pred
         )
 
         self.log("valid_loss", total_loss)
@@ -149,7 +156,7 @@ class MultitaskTrainer(pl.LightningModule):
 
             try:
                 auc, auc_per_attribute_pair = self.verifier.roc_auc(
-                    self.model, self.device
+                    self.model.feature_model, self.device
                 )
             except ValueError as ex:
                 warnings.warn("Verification testing failed. Skipping: " + str(ex))
@@ -177,12 +184,14 @@ class MultitaskTrainer(pl.LightningModule):
         loss_func,
         yb: torch.Tensor,
         ab: torch.Tensor,
-        embeddings: torch.Tensor,
+        embeddings_or_logits: torch.Tensor,
         pred_attribute: torch.Tensor,
         prefix: str = "loss/",
     ) -> Tuple[torch.Tensor, Dict[str, torch.Tensor]]:
 
-        losses = loss_func(embeddings, pred_attribute, yb, ab, self.attribute_weights)
+        losses = loss_func(
+            embeddings_or_logits, pred_attribute, yb, ab, self.attribute_weights
+        )
 
         if isinstance(losses, tuple):
             total_loss, sub_losses = losses
