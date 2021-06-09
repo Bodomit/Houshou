@@ -56,7 +56,8 @@ trainer:
   stochastic_weight_avg: false
 
 model:
-  loss: SHM_UNIFORMKLDIVERGENCE
+  loss_f: SEMIHARD_MINED_TRIPLETS
+  loss_a: UNIFORM_KLDIVERGENCE
   lambda_value: 0.5
   learning_rate: 0.01
   weight_attributes: false
