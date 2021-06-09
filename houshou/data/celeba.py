@@ -131,7 +131,7 @@ class CelebA(TripletsAttributeDataModule):
             attrs_ = torch.as_tensor(rm_diff(attrs)[mask].values)
             attrs_ = (attrs_ + 1) // 2  # map from {-1, 1} to {0, 1}
 
-            # Remap the identiteis to be contiguous (for classification training).
+            # Remap the identities to be contiguous (for classification training).
             unique_identities, identity_map = identities_.unique(return_inverse=True)
             local_unique_identities = torch.arange(
                 0, len(unique_identities), dtype=torch.int64
@@ -156,7 +156,7 @@ class CelebA(TripletsAttributeDataModule):
                 os.path.join(self.data_dir, self.image_dir),
                 self.target_type,
                 transform,
-                filenames,
+                filenames,  # type: ignore
                 local_identities,
                 bboxes_,
                 landmarks_aligns_,

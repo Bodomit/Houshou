@@ -20,7 +20,7 @@ def get_root_dir() -> str:
     raise ValueError("No dataset directory found.")
 
 
-#@pytest.mark.local
+@pytest.mark.local
 class CelebATests(unittest.TestCase):
     def setUp(self):
         self.root = get_root_dir()
@@ -28,8 +28,8 @@ class CelebATests(unittest.TestCase):
         self.batch_size = 2
         self.dataset_module = CelebA(
             self.batch_size,
-            1000,
             ["Male", "Bags_Under_Eyes"],
+            1000,
             self.data_dir,
         )
         self.dataset_module.setup(None)
@@ -77,7 +77,7 @@ class TripletFriendlyRandomSamplerTests(unittest.TestCase):
         self.root = get_root_dir()
         self.data_dir = os.path.join(self.root, "CelebA_MTCNN")
 
-        self.dataset_module = CelebA(8, 1000, ["Male"], self.data_dir)
+        self.dataset_module = CelebA(8, ["Male"], 1000, self.data_dir)
         self.dataset_module.setup(None)
         self.identities = self.dataset_module.train.identities
 
@@ -128,8 +128,8 @@ class VGGFace2Tests(unittest.TestCase):
         self.batch_size = 2
         self.dataset_module = VGGFace2(
             self.batch_size,
-            1000,
             ["Male", "Bangs"],
+            1000,
             self.data_dir,
         )
         self.dataset_module.setup(None)
@@ -148,18 +148,25 @@ class VGGFace2Tests(unittest.TestCase):
         assert valid_classes1 == valid_classes2
         assert valid_classes3 != valid_classes1
 
-    @pytest.mark.local
+    # @pytest.mark.local
     def test_load_train_val(self):
-        trian_classes = set(s[1] for s in self.dataset_module.train.samples)
-        valid_classes = set(s[1] for s in self.dataset_module.valid.samples)
 
-        assert len(trian_classes) == 8213
-        assert len(valid_classes) == 418
+        assert len(self.dataset_module.train.classes) == 8213
+        assert len(self.dataset_module.valid.classes) == 418
 
         assert len(self.dataset_module.train) == 2989351
         assert len(self.dataset_module.valid) == 149268
 
-        assert set.intersection(trian_classes, valid_classes) == set([])
+        assert self.dataset_module.train.identities.max() < 8213
+        assert self.dataset_module.valid.identities.max() < 418
+
+        assert (
+            set.intersection(
+                set(self.dataset_module.train.classes),
+                set(self.dataset_module.valid.classes),
+            )
+            == set([])
+        )
 
         for image, target in self.dataset_module.train:
             assert image is not None
@@ -230,9 +237,9 @@ class Market1501Tests(unittest.TestCase):
             break
 
     def test_load_train_val(self):
-        
-        train_classes = set(self.dataset_module.train.identities)
-        valid_classes = set(self.dataset_module.valid.identities)
+
+        train_classes = set(self.dataset_module.train.identities)  # type: ignore
+        valid_classes = set(self.dataset_module.valid.identities)  # type: ignore
 
         assert set.intersection(train_classes, valid_classes) == set([])
 
