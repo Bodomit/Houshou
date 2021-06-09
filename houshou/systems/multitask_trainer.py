@@ -6,7 +6,7 @@ from typing import Any, Dict, Tuple
 import pytorch_lightning as pl
 import torch
 import torch.nn.functional as F
-from houshou.losses import LOSS, get_loss
+from houshou.losses import LOSS, get_multitask_loss
 from houshou.metrics import BalancedAccuracy, CVThresholdingVerifier
 from houshou.models import MultiTaskTrainingModel
 from houshou.utils import save_cv_verification_results
@@ -19,7 +19,8 @@ from torchmetrics.collections import MetricCollection
 class MultitaskTrainer(pl.LightningModule):
     def __init__(
         self,
-        loss: str,
+        loss_f: str,
+        loss_a: str,
         lambda_value: float,
         learning_rate: float,
         verifier_args: Dict,
@@ -32,7 +33,9 @@ class MultitaskTrainer(pl.LightningModule):
         self.model = MultiTaskTrainingModel(**kwargs)
         self.lambda_value = lambda_value
         self.learning_rate = learning_rate
-        self.loss = get_loss(LOSS[loss], lambda_value=self.lambda_value)
+        self.loss = get_multitask_loss(
+            LOSS[loss_f], LOSS[loss_a], self.lambda_value
+        )
         self.verifier = (
             CVThresholdingVerifier(**verifier_args) if verifier_args else None
         )

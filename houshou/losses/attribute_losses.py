@@ -1,34 +1,30 @@
 import torch
+import torch.nn as nn
 import torch.nn.functional as F
 
-from .semihard_triplet_miner import SemiHardTripletMiner
-
-from typing import Optional
+from .base import LossBase
 
 
-class SHM_UniformKLDivergence(SemiHardTripletMiner):
-    def __init__(self, lambda_value: float = 0.5, margin: float = 0.1, **kargs):
-        super().__init__(lambda_value=lambda_value, margin=margin)
+class UniformTargetKLDivergence(LossBase):
+    def __init__(self):
+        super().__init__()
         self.target_distribution = None
 
-    def calc_target_distribution(self, n_classes: int, device: torch.device):
+    @staticmethod
+    def calc_target_distribution(n_classes: int, device: torch.device):
         assert n_classes > 1
         avg_probability = 1 / n_classes
         probabilities = torch.tensor([avg_probability], device=device).repeat(n_classes)
         return probabilities
 
-    def calc_penalty(  # type: ignore
+    def forward(
         self,
         embeddings: torch.Tensor,
         attribute_pred: torch.Tensor,
         labels: torch.Tensor,
         attribute: torch.Tensor,
         attribute_weights: torch.Tensor,
-        pdist_matrix: torch.Tensor = None,
-        adjacency_not: torch.Tensor = None,
-        **kwargs
-    ) -> torch.Tensor:
-
+    ):
         if self.target_distribution is None:
             n_attribute_classes = attribute_pred.shape[1]
             self.target_distribution = self.calc_target_distribution(
@@ -47,3 +43,18 @@ class SHM_UniformKLDivergence(SemiHardTripletMiner):
         loss_reduced = loss_per_sample.sum() / loss_per_sample.size()[0]
         loss_reduced = loss_reduced.clamp(min=0.0)
         return loss_reduced
+
+
+class CrossEntropy(LossBase):
+    def __init__(self):
+        super().__init__()
+
+    def forward(
+        self,
+        embeddings: torch.Tensor,
+        attribute_pred: torch.Tensor,
+        labels: torch.Tensor,
+        attribute: torch.Tensor,
+        attribute_weights: torch.Tensor,
+    ):
+        return F.cross_entropy(embeddings, labels, attribute_weights)

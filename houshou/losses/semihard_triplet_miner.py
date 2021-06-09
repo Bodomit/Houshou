@@ -4,8 +4,10 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+from .base import LossBase
 
-class TripletMiner(nn.Module):
+
+class TripletMiner(LossBase):
     def __init__(self):
         super().__init__()
 
@@ -64,17 +66,9 @@ class TripletMiner(nn.Module):
 
 
 class SemiHardTripletMiner(TripletMiner):
-    def __init__(
-        self,
-        margin: float = 1.0,
-        lambda_value: float = 0.0,
-        penalty_loss_name: str = "attribute",
-        **kwargs
-    ):
+    def __init__(self, margin: float = 1.0, **kwargs):
         super().__init__()
         self.margin = margin
-        self.lambda_value = lambda_value
-        self.penalty_loss_name = penalty_loss_name
 
     def forward(
         self,
@@ -141,59 +135,4 @@ class SemiHardTripletMiner(TripletMiner):
             num_positives,
         )
 
-        if self.lambda_value > 0.0:
-            # Calculate the penalty to try and force similar images apart.
-            penalty = self.calc_penalty(
-                embeddings,
-                attribute_pred,
-                labels,
-                attribute,
-                attribute_weights,
-                pdist_matrix=pdist_matrix,
-                adjacency_not=adjacency_not,
-            )
-            total_loss = (1 - self.lambda_value) * triplet_loss + (
-                self.lambda_value * penalty
-            )
-        else:
-            total_loss = triplet_loss
-            penalty = torch.tensor(0)
-
-        return total_loss, {"triplet": triplet_loss, self.penalty_loss_name: penalty}
-
-    def calc_penalty(
-        self,
-        embeddings: torch.Tensor,
-        attribute_pred: torch.Tensor,
-        labels: torch.Tensor,
-        attribute: torch.Tensor,
-        attribute_weights: torch.Tensor,
-        **kwargs
-    ):
-        raise NotImplementedError
-
-
-class SHM_CategoricalCrossEntropy(SemiHardTripletMiner):
-    def __init__(self, **kwargs):
-        super().__init__(
-            **kwargs,
-            penalty_loss_name="attribute",
-        )
-        self.loss = nn.CrossEntropyLoss()
-
-    def calc_penalty(
-        self,
-        embeddings: torch.Tensor,
-        attribute_pred: Optional[torch.Tensor],
-        labels: torch.Tensor,
-        attribute: Optional[torch.Tensor],
-        pdist_matrix: torch.Tensor = None,
-        adjacency_not: torch.Tensor = None,
-        **kwargs
-    ) -> torch.Tensor:
-
-        assert attribute is not None
-        assert attribute_pred is not None
-
-        loss = self.loss(attribute_pred, attribute)
-        return loss
+        return triplet_loss

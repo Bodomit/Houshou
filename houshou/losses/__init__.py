@@ -1,22 +1,34 @@
 from enum import Enum, auto
 from typing import Type
-import houshou.losses.semihard_triplet_miner as shm
 
-from .semihard_kldiv import SHM_UniformKLDivergence
+from .attribute_losses import CrossEntropy, UniformTargetKLDivergence
+from .base import LossBase, WeightedMultitaskLoss
+from .semihard_triplet_miner import SemiHardTripletMiner
 
 
 class LOSS(Enum):
-    SEMIHARD_CROSSENTROPY = auto()
-    SHM_UNIFORMKLDIVERGENCE = auto()
+    CROSSENTROPY = auto()
+    UNIFORM_KLDIVERGENCE = auto()
+    SEMIHARD_MINED_TRIPLETS = auto()
 
     def __str__(self) -> str:
         return self.name
 
 
-def get_loss(loss: LOSS, **kwargs) -> shm.SemiHardTripletMiner:
-    if loss == LOSS.SEMIHARD_CROSSENTROPY:
-        return shm.SHM_CategoricalCrossEntropy(**kwargs)
-    elif loss == LOSS.SHM_UNIFORMKLDIVERGENCE:
-        return SHM_UniformKLDivergence(**kwargs)
+def get_loss(loss: LOSS, **kwargs) -> LossBase:
+    if loss == LOSS.CROSSENTROPY:
+        return CrossEntropy(**kwargs)
+    elif loss == LOSS.UNIFORM_KLDIVERGENCE:
+        return UniformTargetKLDivergence(**kwargs)
+    elif loss == LOSS.SEMIHARD_MINED_TRIPLETS:
+        return SemiHardTripletMiner(**kwargs)
     else:
         raise ValueError()
+
+
+def get_multitask_loss(
+    loss_f: LOSS, loss_a: LOSS, lambda_value: float, **kwargs
+) -> WeightedMultitaskLoss:
+    l_f = get_loss(loss_f, **kwargs)
+    l_a = get_loss(loss_a, **kwargs)
+    return WeightedMultitaskLoss(l_f, l_a, lambda_value)

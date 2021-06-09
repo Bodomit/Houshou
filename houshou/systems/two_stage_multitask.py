@@ -10,7 +10,8 @@ from .multitask_trainer import MultitaskTrainer
 class TwoStageMultitaskTrainer(MultitaskTrainer):
     def __init__(
         self,
-        loss: str,
+        loss_f: str,
+        loss_a: str,
         lambda_value: float,
         learning_rate: float,
         verifier_args: Dict,
@@ -18,7 +19,8 @@ class TwoStageMultitaskTrainer(MultitaskTrainer):
         **kwargs
     ) -> None:
         super().__init__(
-            loss,
+            loss_f,
+            loss_a,
             lambda_value,
             learning_rate,
             verifier_args,
