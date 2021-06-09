@@ -19,8 +19,6 @@ class VGGFace2Dataset(Dataset):
         self,
         samples: List[Tuple[str, int]],
         identities: torch.Tensor,
-        classes: List[str],
-        classes_to_idx: Dict[str, int],
         attributes: torch.Tensor,
         attribute_names: List[str],
         attributes_support: torch.Tensor,
@@ -30,13 +28,13 @@ class VGGFace2Dataset(Dataset):
         super().__init__()
         self.samples = samples
         self.identities = identities
-        self.classes = classes
-        self.classes_to_idx = classes_to_idx
         self.attributes = attributes
         self.attribute_names = attribute_names
         self.attributes_support = attributes_support
         self.target_type = target_type
         self.transform = transform
+
+        self.classes = self.identities.unique()
 
     def __len__(self):
         return len(self.samples)
@@ -51,10 +49,10 @@ class VGGFace2Dataset(Dataset):
             if t == "attr":
                 target.append(self.attributes[index, :])
             elif t == "identity":
-                # Reads identity from the separate tensor provided.
-                # Messy but helps ensure everything is correctly aligned.
+                # Using self.identities field rather than the identity from the sample,
+                # as self.identities is specific to the dataset whereas the sample
+                # identity covers both train and val (if stage == "fit"). Mess like.
                 identity_ = self.identities[index]
-                assert identity_.item() == identity
                 target.append(identity_)
             else:
                 raise ValueError('Target type "{}" is not recognized.'.format(t))
@@ -163,8 +161,6 @@ class VGGFace2(TripletsAttributeDataModule):
         construct_fn = partial(
             self.construct_dataset,
             real_split_dir=real_split_dir,
-            classes=image_folder.classes,
-            class_to_idx=image_folder.class_to_idx,
             attributes=attributes,
             target_type=self.target_type,
         )
@@ -189,8 +185,6 @@ class VGGFace2(TripletsAttributeDataModule):
         test_dataset = self.construct_dataset(
             real_split_dir,
             image_folder.samples,
-            image_folder.classes,
-            image_folder.class_to_idx,
             attributes,
             self.target_type,
             self.test_transforms,
@@ -202,8 +196,6 @@ class VGGFace2(TripletsAttributeDataModule):
         self,
         real_split_dir: str,
         samples: List[Tuple[str, int]],
-        classes: List[str],
-        class_to_idx: Dict[str, int],
         attributes: pandas.DataFrame,
         target_type: List[str],
         transform: transforms.Compose,
@@ -228,6 +220,13 @@ class VGGFace2(TripletsAttributeDataModule):
         attributes_ = (attributes_ + 1) // 2  # map from {-1, 1} to {0, 1}
         attr_names = list(attributes.columns)
 
+        # Remap the identities to be contiguous (for classification training).
+        unique_identities, identity_map = identities.unique(return_inverse=True)
+        local_unique_identities = torch.arange(
+            0, len(unique_identities), dtype=torch.int64
+        )
+        local_identities = local_unique_identities[identity_map]
+
         # Get the indexes for the specified columns.
         selected_attribute_indexs = self.get_indexes(attr_names, self.attribute)
         attributes_ = attributes_[:, selected_attribute_indexs]
@@ -235,13 +234,11 @@ class VGGFace2(TripletsAttributeDataModule):
         attributes_support = self.calc_attribute_support(attributes_)
 
         # One last sanity check
-        assert len(identities) == len(attributes_) == len(samples)
+        assert len(local_identities) == len(attributes_) == len(samples)
 
         return VGGFace2Dataset(
             samples,
-            identities,
-            classes,
-            class_to_idx,
+            local_identities,
             attributes_,
             attr_names,
             attributes_support,
