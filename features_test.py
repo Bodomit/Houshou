@@ -36,8 +36,8 @@ def main(experiment_path: str, batch_size: int, is_debug: bool, is_fullbody: boo
         datamodules = [Market1501(batch_size, None, ["gender"])]
     else:
         datamodules = [
-            VGGFace2(batch_size, None, ["Male"]),
-            CelebA(batch_size, None, ["Male"]),
+            VGGFace2(batch_size, ["Male"], buffer_size=None),
+            CelebA(batch_size, ["Male"], buffer_size=None),
         ]
     # Get the device.
     device = torch.device("cuda:0")

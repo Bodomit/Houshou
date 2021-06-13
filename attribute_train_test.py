@@ -24,8 +24,7 @@ def main(
 
     # Load the multitask model and get the featrue model.
     multitask_trainer = TwoStageMultitaskTrainer.load_from_checkpoint(
-        feature_model_checkpoint_path,
-        verifier_args=None
+        feature_model_checkpoint_path, verifier_args=None
     )
     assert isinstance(multitask_trainer, TwoStageMultitaskTrainer)
     feature_model = multitask_trainer.model.feature_model
@@ -38,8 +37,8 @@ def main(
         datamodules = [Market1501(batch_size, None, ["gender"])]
     else:
         datamodules = [
-            VGGFace2(batch_size, None, ["Male"]),
-            CelebA(batch_size, None, ["Male"]),
+            VGGFace2(batch_size, ["Male"], buffer_size=None),
+            CelebA(batch_size, ["Male"], buffer_size=None),
         ]
 
     yaml = YAML(typ="safe")
