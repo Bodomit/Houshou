@@ -1,14 +1,11 @@
+import pytorch_lightning as pl
 import torch
 import torch.nn.functional as F
-import pytorch_lightning as pl
-
-from torchmetrics.utilities.data import to_onehot
-from torchmetrics.collections import MetricCollection
-from torchmetrics.classification import Accuracy, Precision, Recall, F1
-from torchmetrics.functional import stat_scores
-
-from houshou.models import AttributeExtractionModel, FeatureModel
 from houshou.metrics import BalancedAccuracy
+from houshou.models import AttributeExtractionModel, FeatureModel
+from torchmetrics.classification import F1, Accuracy, Precision, Recall
+from torchmetrics.collections import MetricCollection
+from torchmetrics.functional import stat_scores
 
 
 class AttributeExtractionTask(pl.LightningModule):
@@ -40,6 +37,14 @@ class AttributeExtractionTask(pl.LightningModule):
 
     def forward(self, x):
         x = self.feature_model(x)
+
+        if isinstance(x, torch.Tensor):
+            x = x
+        elif len(x) == 2:
+            _, x = x
+        else:
+            raise ValueError
+
         x = self.attribute_model(x)
         return x
 
