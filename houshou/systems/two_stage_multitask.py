@@ -49,7 +49,9 @@ class TwoStageMultitaskTrainer(MultitaskTrainer):
         _, attribute_pred = self.model(xb)
 
         attribute_loss = F.cross_entropy(attribute_pred, ab, self.attribute_weights)
-        self.log("loss/stage1", attribute_loss, on_step=True, on_epoch=True)
+        self.log(
+            "loss/stage1", attribute_loss, on_step=True, on_epoch=True, prog_bar=True
+        )
         self.manual_backward(attribute_loss)
         opt.step()
         opt.zero_grad()
@@ -75,7 +77,7 @@ class TwoStageMultitaskTrainer(MultitaskTrainer):
             prefix="loss/stage2/",
         )
         self.log("loss/stage2/total", total_loss, on_step=True, on_epoch=True)
-        self.log_dict(sub_losses, on_step=True, on_epoch=True)
+        self.log_dict(sub_losses, on_step=True, on_epoch=True, prog_bar=True)
         self.manual_backward(total_loss)
         opt.step()
         opt.zero_grad()
