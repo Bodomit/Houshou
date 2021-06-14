@@ -83,8 +83,4 @@ class TwoStageMultitaskTrainer(MultitaskTrainer):
         opt.zero_grad()
 
     def configure_optimizers(self):
-        return (
-            torch.optim.Adam(
-                self.model.attribute_model.parameters(), lr=self.learning_rate
-            ),
-        )
+        return (torch.optim.Adam(self.model.parameters(), lr=self.learning_rate),)
