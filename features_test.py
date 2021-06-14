@@ -1,18 +1,23 @@
 import os
 from argparse import ArgumentParser
-from typing import List
+from typing import Generator, Union, get_args
 
 import pytorch_lightning as pl
 import torch
 from torch.utils.data.dataloader import DataLoader
 
 from houshou.data import CelebA, Market1501, VGGFace2
+from houshou.data.celeba import CelebADataset
+from houshou.data.market_1501 import Market1501Dataset
+from houshou.data.vggface2 import VGGFace2Dataset
 from houshou.metrics import CVThresholdingVerifier
 from houshou.models import FeatureModel
 from houshou.systems import TwoStageMultitaskTrainer
 from houshou.utils import find_last_epoch_path, save_cv_verification_results
 
 pl.seed_everything(42, workers=True)
+
+HOUSHOU_DATASET = Union[VGGFace2Dataset, CelebADataset, Market1501Dataset]
 
 
 def main(experiment_path: str, batch_size: int, is_debug: bool, is_fullbody: bool):
@@ -45,32 +50,60 @@ def main(experiment_path: str, batch_size: int, is_debug: bool, is_fullbody: boo
 
     for test_module in datamodules:
 
-        dataset_name = os.path.basename(test_module.data_dir)
-        results_dir = os.path.join(experiment_path, "feature_tests", dataset_name)
-        os.makedirs(results_dir, exist_ok=True)
-
-        verifier = CVThresholdingVerifier(batch_size, debug=is_debug)
-
         test_module.setup("test")
         test_dataloader = test_module.test_dataloader()
         assert isinstance(test_dataloader, DataLoader)
+        test_dataset = test_dataloader.dataset
+        assert any(isinstance(test_dataset, t) for t in get_args(HOUSHOU_DATASET))
+        dataset_name = os.path.basename(test_module.data_dir)
 
-        verifier.setup(test_dataloader)
+        print(f"Dataset Module: {dataset_name}")
 
-        (
-            metrics_rocs,
-            per_attribute_pair_metrics_rocs,
-        ) = verifier.cv_thresholding_verification(feature_model, device)
+        for n_classes in n_classes_scheduler(len(test_dataset.classes)):  # type: ignore
 
-        # Save the combined cv verification results.
-        save_cv_verification_results(metrics_rocs, results_dir, "_all")
+            print(f"N Classes: {n_classes}")
 
-        # Save the attribuet pair results.
-        for ap in per_attribute_pair_metrics_rocs:
-            ap_suffix = f"_{ap[0]}_{ap[1]}"
-            save_cv_verification_results(
-                per_attribute_pair_metrics_rocs[ap], results_dir, ap_suffix
+            results_dir = os.path.join(
+                experiment_path, "feature_tests", dataset_name, str(n_classes)
             )
+            os.makedirs(results_dir, exist_ok=True)
+
+            verifier = CVThresholdingVerifier(
+                batch_size, max_n_classes=n_classes, debug=is_debug
+            )
+
+            verifier.setup(test_dataloader)
+
+            (
+                metrics_rocs,
+                per_attribute_pair_metrics_rocs,
+            ) = verifier.cv_thresholding_verification(feature_model, device)
+
+            # Save the combined cv verification results.
+            save_cv_verification_results(metrics_rocs, results_dir, "_all")
+
+            # Save the attribuet pair results.
+            for ap in per_attribute_pair_metrics_rocs:
+                ap_suffix = f"_{ap[0]}_{ap[1]}"
+                save_cv_verification_results(
+                    per_attribute_pair_metrics_rocs[ap], results_dir, ap_suffix
+                )
+
+
+def n_classes_scheduler(
+    total_n_classes: int, start=25, step_f=lambda x: 2 * x
+) -> Generator[int, None, None]:
+    x = start
+    yield x
+
+    while x < total_n_classes:
+        x = step_f(x)
+
+        if x < total_n_classes:
+            yield x
+        else:
+            yield total_n_classes
+            return
 
 
 if __name__ == "__main__":

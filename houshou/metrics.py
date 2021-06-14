@@ -22,17 +22,24 @@ class Verifier:
         self,
         batch_size: int,
         max_n_matching_pairs: Optional[int],
+        max_n_classes: Optional[int],
         debug: bool,
         seed: int,
     ):
         self.batch_size = batch_size
         self.max_n_matching_pairs = max_n_matching_pairs
+        self.max_n_classes = max_n_classes
         self.rnd = np.random.RandomState(seed)
         self.debug = debug
 
     def setup(self, dataloader: DataLoader):
         samples, data_map = self._load_data(dataloader)
         samples_per_label = self.get_samples_per_label(samples)
+
+        if self.max_n_classes is not None:
+            classes = sorted(samples_per_label)[: self.max_n_classes]
+            samples_per_label = {c: samples_per_label[c] for c in classes}
+
         matching_pairs = self.get_matching_pairs(
             samples_per_label,
             self.debug,
@@ -248,11 +255,12 @@ class CVThresholdingVerifier(Verifier):
         self,
         batch_size: int,
         max_n_matching_pairs: Optional[int] = 1000000,
+        max_n_classes: Optional[int] = None,
         debug=False,
         seed: int = 42,
         n_splits=10,
     ):
-        super().__init__(batch_size, max_n_matching_pairs, debug, seed)
+        super().__init__(batch_size, max_n_matching_pairs, max_n_classes, debug, seed)
         self.n_splits = n_splits
 
     def cv_thresholding_verification(
@@ -271,9 +279,12 @@ class CVThresholdingVerifier(Verifier):
             Tuple[int, int], Tuple[pd.DataFrame, List[ROCCurve]]
         ] = {}
 
+        desc = "CV Verification"
+        desc += f" (Classes: {self.max_n_classes})" if self.max_n_classes else ""
+
         for split_train, split_test in tqdm.tqdm(
             kf.split(distances),
-            desc="CV Verification",
+            desc,
             total=self.n_splits,
             dynamic_ncols=True,
         ):
