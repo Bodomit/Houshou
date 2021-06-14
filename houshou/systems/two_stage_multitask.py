@@ -43,8 +43,8 @@ class TwoStageMultitaskTrainer(MultitaskTrainer):
         ab = ab.squeeze()
 
         # Train attribute model only.
-        self.model.feature_model.requires_grad_(False)
-        self.model.attribute_model.requires_grad_(True)
+        self.model.feature_model.freeze()
+        self.model.attribute_model.unfreeze()
 
         _, attribute_pred = self.model(xb)
 
@@ -55,8 +55,8 @@ class TwoStageMultitaskTrainer(MultitaskTrainer):
         opt.zero_grad()
 
         # Train on same batch but feature model only.
-        self.model.feature_model.requires_grad_(True)
-        self.model.attribute_model.requires_grad_(False)
+        self.model.feature_model.unfreeze()
+        self.model.attribute_model.freeze()
 
         embeddings_or_logits, attribute_pred = self.model(xb)
 
