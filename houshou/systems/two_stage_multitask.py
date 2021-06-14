@@ -43,20 +43,22 @@ class TwoStageMultitaskTrainer(MultitaskTrainer):
         ab = ab.squeeze()
 
         # Train attribute model only.
-        self.model.feature_model.requires_grad_(False)
-        self.model.attribute_model.requires_grad_(True)
+        self.model.feature_model.freeze()
+        self.model.attribute_model.unfreeze()
 
         _, attribute_pred = self.model(xb)
 
         attribute_loss = F.cross_entropy(attribute_pred, ab, self.attribute_weights)
-        self.log("loss/stage1", attribute_loss, on_step=True, on_epoch=True)
+        self.log(
+            "loss/stage1", attribute_loss, on_step=True, on_epoch=True, prog_bar=True
+        )
         self.manual_backward(attribute_loss)
         opt.step()
         opt.zero_grad()
 
         # Train on same batch but feature model only.
-        self.model.feature_model.requires_grad_(True)
-        self.model.attribute_model.requires_grad_(False)
+        self.model.feature_model.unfreeze()
+        self.model.attribute_model.freeze()
 
         embeddings_or_logits, attribute_pred = self.model(xb)
 
@@ -75,14 +77,10 @@ class TwoStageMultitaskTrainer(MultitaskTrainer):
             prefix="loss/stage2/",
         )
         self.log("loss/stage2/total", total_loss, on_step=True, on_epoch=True)
-        self.log_dict(sub_losses, on_step=True, on_epoch=True)
+        self.log_dict(sub_losses, on_step=True, on_epoch=True, prog_bar=True)
         self.manual_backward(total_loss)
         opt.step()
         opt.zero_grad()
 
     def configure_optimizers(self):
-        return (
-            torch.optim.Adam(
-                self.model.attribute_model.parameters(), lr=self.learning_rate
-            ),
-        )
+        return (torch.optim.Adam(self.model.parameters(), lr=self.learning_rate),)
