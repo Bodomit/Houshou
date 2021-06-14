@@ -18,7 +18,7 @@ trainer:
   check_val_every_n_epoch: 1
   fast_dev_run: false
   accumulate_grad_batches: 1
-  max_epochs: 50
+  max_epochs: 30
   min_epochs: null
   max_steps: null
   min_steps: null
