@@ -16,8 +16,8 @@ class Market1501(TripletsAttributeDataModule):
     def __init__(
         self,
         batch_size: int,
-        buffer_size: Optional[int],
         attribute: List[str],
+        buffer_size: Optional[int] = None,
         data_dir: str = "Market-1501",
         valid_split: float = 0.05,
         valid_split_seed: int = 42,
