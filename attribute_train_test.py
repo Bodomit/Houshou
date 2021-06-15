@@ -34,7 +34,7 @@ def main(
 
     # Construct the datamodules.
     if is_fullbody:
-        datamodules = [Market1501(batch_size, None, ["gender"])]
+        datamodules = [Market1501(batch_size, ["gender"], buffer_size=None)]
     else:
         datamodules = [
             VGGFace2(batch_size, ["Male"], buffer_size=None),
