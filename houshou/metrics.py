@@ -1,4 +1,5 @@
 import itertools
+import warnings
 from collections import defaultdict
 from typing import Any, Dict, List, Optional, Set, Tuple
 
@@ -237,11 +238,9 @@ class Verifier:
 
             try:
                 auc_ap = metrics.roc_auc_score(labels_ap, np.negative(distances_ap))
-            except ValueError:
-                if self.debug:
-                    continue
-                else:
-                    raise
+            except ValueError as ex:
+                warnings.warn(f"Verification testing for ({attribute_pair}) failed. Skipping: " + str(ex))
+                continue
 
             assert isinstance(auc_ap, float)
 

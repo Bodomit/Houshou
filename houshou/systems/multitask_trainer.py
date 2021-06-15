@@ -1,6 +1,5 @@
 import os
 import shutil
-import warnings
 from typing import Any, Dict, Optional, Tuple
 
 import pytorch_lightning as pl
@@ -9,10 +8,9 @@ import torch.nn.functional as F
 from houshou.losses import LOSS, get_multitask_loss
 from houshou.metrics import BalancedAccuracy, CVThresholdingVerifier
 from houshou.models import MultiTaskTrainingModel
-from houshou.utils import save_cv_verification_results
-from torch.functional import Tensor
 from torch.utils.data.dataloader import DataLoader
-from torchmetrics.classification import F1, Accuracy, ConfusionMatrix, Precision, Recall
+from torchmetrics.classification import (F1, Accuracy, ConfusionMatrix,
+                                         Precision, Recall)
 from torchmetrics.collections import MetricCollection
 
 
@@ -153,14 +151,9 @@ class MultitaskTrainer(pl.LightningModule):
         assert isinstance(self.device, torch.device)
 
         if self.verifier is not None:
-
-            try:
-                auc, auc_per_attribute_pair = self.verifier.roc_auc(
-                    self.model.feature_model, self.device
-                )
-            except ValueError as ex:
-                warnings.warn("Verification testing failed. Skipping: " + str(ex))
-                return
+            auc, auc_per_attribute_pair = self.verifier.roc_auc(
+                self.model.feature_model, self.device
+            )
 
             def newkey(attribute_pair: Tuple[int, int]):
                 return f"valid_auc_{attribute_pair[0]}_{attribute_pair[1]}"
