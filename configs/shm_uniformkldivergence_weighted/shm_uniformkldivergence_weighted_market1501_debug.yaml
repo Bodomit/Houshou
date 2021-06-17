@@ -6,6 +6,7 @@ model:
   loss_a: UNIFORM_KLDIVERGENCE
   learning_rate: 0.01
   weight_attributes: true
+  use_resnet18: true
   verifier_args:
     batch_size: 512
     debug: true

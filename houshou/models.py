@@ -8,12 +8,16 @@ from pytorch_lightning.core.lightning import LightningModule
 
 
 class FeatureModel(pl.LightningModule):
-    def __init__(self, dropout_prob: float = 0.6, **kwargs):
+    def __init__(self, dropout_prob: float = 0.6, use_resnet18=False, **kwargs):
         super().__init__()
         self.save_hyperparameters()
-        self.resnet = InceptionResnetV1(
-            pretrained=None, classify=False, num_classes=None, dropout_prob=dropout_prob
-        )
+        if use_resnet18:
+            resnet = torch.hub.load('pytorch/vision:v0.9.0', 'resnet18', pretrained=False)
+            self.resnet = nn.Sequential(*(list(resnet.children())[:-1]), nn.Flatten())
+        else:
+            self.resnet = InceptionResnetV1(
+                pretrained=None, classify=False, num_classes=None, dropout_prob=dropout_prob
+            )
 
     def forward(self, x):
         return self.resnet(x)
@@ -72,6 +76,7 @@ class MultiTaskTrainingModel(pl.LightningModule):
         attribute_model_path: str = None,
         reverse_attribute_gradient: bool = False,
         classification_training_scenario: bool = False,
+        use_resnet18: bool = False,
         **kwargs
     ):
         super().__init__()
@@ -83,7 +88,7 @@ class MultiTaskTrainingModel(pl.LightningModule):
             model_type = FeatureModel
 
         self.feature_model = self._load_or_create_model(
-            model_type, feature_model_path, **kwargs
+            model_type, feature_model_path, use_resnet18=use_resnet18, **kwargs
         )
 
         if attribute_model_path:

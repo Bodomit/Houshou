@@ -25,6 +25,7 @@ class MultitaskTrainer(pl.LightningModule):
         weight_attributes: bool,
         classification_training_scenario: bool,
         n_classes: Optional[int] = None,
+        use_resnet18: bool = False,
         **kwargs,
     ) -> None:
         super().__init__()
@@ -33,6 +34,7 @@ class MultitaskTrainer(pl.LightningModule):
         self.model = MultiTaskTrainingModel(
             classification_training_scenario=classification_training_scenario,
             n_classes=n_classes,
+            use_resnet18=use_resnet18,
             **kwargs,
         )
         self.lambda_value = lambda_value

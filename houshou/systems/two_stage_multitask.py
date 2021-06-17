@@ -18,6 +18,7 @@ class TwoStageMultitaskTrainer(MultitaskTrainer):
         weight_attributes: bool,
         classification_training_scenario: bool,
         n_classes: Optional[int] = None,
+        use_resnet18: bool = False,
         **kwargs
     ) -> None:
         super().__init__(
@@ -29,6 +30,7 @@ class TwoStageMultitaskTrainer(MultitaskTrainer):
             weight_attributes,
             classification_training_scenario,
             n_classes,
+            use_resnet18,
             **kwargs
         )
         self.automatic_optimization = False
