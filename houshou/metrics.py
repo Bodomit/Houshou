@@ -319,12 +319,16 @@ class CVThresholdingVerifier(Verifier):
                     sorted(set.intersection(split_test_set, att_pair_indexes))
                 )
 
-                split_results_ap, split_rocs_ap = self.thresholding_verification(
-                    distances[split_train_ap],
-                    labels[split_train_ap],
-                    distances[split_test_ap],
-                    labels[split_test_ap],
-                )
+                try:
+                    split_results_ap, split_rocs_ap = self.thresholding_verification(
+                        distances[split_train_ap],
+                        labels[split_train_ap],
+                        distances[split_test_ap],
+                        labels[split_test_ap],
+                    )
+                except ValueError as ex:
+                    warnings.warn(f"Verification testing for ({attribute_pair}) failed. Skipping: " + str(ex))
+                    continue
 
                 if attribute_pair not in attribute_pair_results:
                     metrics_ds_ap = pd.DataFrame.from_records([split_results_ap])
