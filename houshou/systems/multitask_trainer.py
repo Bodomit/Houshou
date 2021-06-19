@@ -27,6 +27,7 @@ class MultitaskTrainer(pl.LightningModule):
         n_classes: Optional[int] = None,
         use_resnet18: bool = False,
         use_short_attribute_branch: bool = False,
+        reverse_attribute_gradient: bool = False,
         **kwargs,
     ) -> None:
         super().__init__()
@@ -39,6 +40,7 @@ class MultitaskTrainer(pl.LightningModule):
             n_classes=n_classes,
             use_resnet18=use_resnet18,
             use_short_attribute_branch=use_short_attribute_branch,
+            reverse_attribute_gradient=reverse_attribute_gradient,
             **kwargs,
         )
         self.lambda_value = lambda_value
@@ -100,7 +102,7 @@ class MultitaskTrainer(pl.LightningModule):
             self.loss, yb, ab, embeddings_or_logits, attribute_pred
         )
 
-        self.log("loss", total_loss, on_step=True, on_epoch=True)
+        self.log("loss/total", total_loss, on_step=True, on_epoch=True)
         self.log_dict(sub_losses, on_step=True, on_epoch=True)
 
         metrics = self.training_step_attribute_metrics(ab, attribute_pred)
@@ -129,6 +131,8 @@ class MultitaskTrainer(pl.LightningModule):
 
     def validation_step(self, batch, batch_idx):
         xb, (yb, ab) = batch
+        ab = ab.squeeze()
+
         embeddings_or_logits, attribute_pred = self.model(xb)
         total_loss, sub_losses = self.get_totalloss_with_sublosses(
             self.loss, yb, ab, embeddings_or_logits, attribute_pred
