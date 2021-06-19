@@ -4,7 +4,6 @@ import pytorch_lightning as pl
 import torch
 import torch.nn as nn
 from facenet_pytorch import InceptionResnetV1
-from pytorch_lightning.core.lightning import LightningModule
 
 
 class FeatureModel(pl.LightningModule):
@@ -39,31 +38,43 @@ class ClassificationModel(FeatureModel):
 
 
 class AttributeExtractionModel(pl.LightningModule):
-    def __init__(self, n_outputs=2, **kwargs):
+    def __init__(self, n_outputs=2, use_short_attribute_branch=False, **kwargs):
         super().__init__()
-        self.full_model = nn.Sequential(
-            nn.Flatten(),
-            nn.LeakyReLU(),
-            nn.Linear(512, 128),
-            nn.LeakyReLU(),
-            nn.Linear(128, 128),
-            nn.LeakyReLU(),
-            nn.Linear(128, 128),
-            nn.LeakyReLU(),
-            nn.Linear(128, 64),
-            nn.LeakyReLU(),
-            nn.Linear(64, 64),
-            nn.LeakyReLU(),
-            nn.Linear(64, 32),
-            nn.LeakyReLU(),
-            nn.Linear(32, 32),
-            nn.LeakyReLU(),
-            nn.Linear(32, 16),
-            nn.LeakyReLU(),
-            nn.Linear(16, 16),
-            nn.LeakyReLU(),
-            nn.Linear(16, n_outputs),
-        )
+        super().save_hyperparameters()
+        if use_short_attribute_branch:
+            self.full_model = nn.Sequential(
+                nn.Flatten(),
+                nn.LeakyReLU(),
+                nn.Linear(512, 128),
+                nn.LeakyReLU(),
+                nn.Linear(128, 32),
+                nn.LeakyReLU(),
+                nn.Linear(32, n_outputs),
+            )
+        else:
+            self.full_model = nn.Sequential(
+                nn.Flatten(),
+                nn.LeakyReLU(),
+                nn.Linear(512, 128),
+                nn.LeakyReLU(),
+                nn.Linear(128, 128),
+                nn.LeakyReLU(),
+                nn.Linear(128, 128),
+                nn.LeakyReLU(),
+                nn.Linear(128, 64),
+                nn.LeakyReLU(),
+                nn.Linear(64, 64),
+                nn.LeakyReLU(),
+                nn.Linear(64, 32),
+                nn.LeakyReLU(),
+                nn.Linear(32, 32),
+                nn.LeakyReLU(),
+                nn.Linear(32, 16),
+                nn.LeakyReLU(),
+                nn.Linear(16, 16),
+                nn.LeakyReLU(),
+                nn.Linear(16, n_outputs),
+            )
 
     def forward(self, x):
         return self.full_model(x)
@@ -77,6 +88,7 @@ class MultiTaskTrainingModel(pl.LightningModule):
         reverse_attribute_gradient: bool = False,
         classification_training_scenario: bool = False,
         use_resnet18: bool = False,
+        use_short_attribute_branch: bool = False,
         **kwargs
     ):
         super().__init__()
@@ -88,7 +100,11 @@ class MultiTaskTrainingModel(pl.LightningModule):
             model_type = FeatureModel
 
         self.feature_model = self._load_or_create_model(
-            model_type, feature_model_path, use_resnet18=use_resnet18, **kwargs
+            model_type,
+            feature_model_path,
+            use_resnet18=use_resnet18,
+            use_short_attribute_branch=use_short_attribute_branch,
+            **kwargs
         )
 
         if attribute_model_path:
@@ -96,7 +112,9 @@ class MultiTaskTrainingModel(pl.LightningModule):
                 attribute_model_path
             )
         else:
-            self.attribute_model = AttributeExtractionModel(**kwargs)
+            self.attribute_model = AttributeExtractionModel(
+                use_short_attribute_branch=use_short_attribute_branch,
+                **kwargs)
 
         self.reverse_attribute_gradient = reverse_attribute_gradient
 
