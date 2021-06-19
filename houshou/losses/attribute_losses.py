@@ -58,3 +58,18 @@ class CrossEntropy(LossBase):
         attribute_weights: torch.Tensor,
     ):
         return F.cross_entropy(embeddings, labels)
+
+
+class CrossEntropyAttribute(LossBase):
+    def __init__(self):
+        super().__init__()
+
+    def forward(
+        self,
+        embeddings: torch.Tensor,
+        attribute_pred: torch.Tensor,
+        labels: torch.Tensor,
+        attribute: torch.Tensor,
+        attribute_weights: torch.Tensor,
+    ):
+        return F.cross_entropy(attribute_pred, attribute)

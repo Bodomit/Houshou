@@ -56,18 +56,20 @@ trainer:
   stochastic_weight_avg: false
 
 model:
-  loss_f: SEMIHARD_MINED_TRIPLETS
-  loss_a: UNIFORM_KLDIVERGENCE
-  lambda_value: 0.5
-  learning_rate: 0.01
-  weight_attributes: false
-  classification_training_scenario: false
-  n_classes: null
-  verifier_args:
-    batch_size: 512
-    debug: false
-    seed: 42
-    n_splits: 10
+  class_path: houshou.systems.TwoStageMultitaskTrainer
+  init_args:
+    loss_f: SEMIHARD_MINED_TRIPLETS
+    loss_a: UNIFORM_KLDIVERGENCE
+    lambda_value: -1.0
+    learning_rate: 0.01
+    weight_attributes: false
+    classification_training_scenario: false
+    n_classes: null
+    verifier_args:
+      batch_size: 512
+      debug: false
+      seed: 42
+      n_splits: 10
 
 data:
   class_path: houshou.data.TripletsAttributeDataModule

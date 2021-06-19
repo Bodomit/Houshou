@@ -20,6 +20,7 @@ class TwoStageMultitaskTrainer(MultitaskTrainer):
         n_classes: Optional[int] = None,
         use_resnet18: bool = False,
         use_short_attribute_branch: bool = False,
+        reverse_attribute_gradient: bool = False,
         **kwargs
     ) -> None:
         super().__init__(
@@ -33,6 +34,7 @@ class TwoStageMultitaskTrainer(MultitaskTrainer):
             n_classes,
             use_resnet18,
             use_short_attribute_branch,
+            reverse_attribute_gradient,
             **kwargs
         )
         self.automatic_optimization = False

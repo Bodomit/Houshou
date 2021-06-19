@@ -1,0 +1,27 @@
+trainer:
+  default_root_dir: /home/gbrown/results/houshou/dann/debug
+  fast_dev_run: true
+model:
+  class_path: houshou.systems.MultitaskTrainer
+  init_args:
+    lambda_value: -1
+    loss_f: CROSSENTROPY
+    loss_a: CROSSENTROPY_ATTRIBUTE
+    learning_rate: 0.01
+    weight_attributes: false
+    classification_training_scenario: true
+    reverse_attribute_gradient: true
+    n_classes: 8192
+    verifier_args:
+      batch_size: 512
+      debug: true
+      seed: 42
+      n_splits: 10
+data:
+  class_path: houshou.data.CelebA
+  init_args:
+    data_dir: CelebA_MTCNN
+    batch_size: 512
+    buffer_size: null
+    attribute:
+      - Male
