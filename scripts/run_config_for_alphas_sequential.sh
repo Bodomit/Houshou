@@ -45,7 +45,7 @@ do
     srun python -m features_train \
         --config $CONFIG_PATH \
         --trainer.default_root_dir $RESULTSDIR \
-        --model.lambda_value $ALPHA
+        --model.init_args.lambda_value $ALPHA 
 
     srun python -m features_test $RESULTSDIR
 
