@@ -32,6 +32,8 @@ class MultitaskTrainer(pl.LightningModule):
         super().__init__()
         self.save_hyperparameters()
 
+        assert lambda_value >= 0
+
         self.model = MultiTaskTrainingModel(
             classification_training_scenario=classification_training_scenario,
             n_classes=n_classes,
