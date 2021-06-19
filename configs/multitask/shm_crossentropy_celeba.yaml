@@ -8,6 +8,7 @@ model:
     learning_rate: 0.01
     classification_training_scenario: false
     reverse_attribute_gradient: false
+    weight_attributes: false
     verifier_args:
       batch_size: 256
       debug: false
