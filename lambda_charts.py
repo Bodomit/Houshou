@@ -1,24 +1,23 @@
-import os
-import re
+import argparse
 import glob
+import itertools
+import os
 import pickle
+import re
 import shutil
 import warnings
-import argparse
-import itertools
+from typing import Any, Dict, List, Set, Tuple
 
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
+import tqdm
+from ruyaml import YAML
 from sklearn.metrics import auc
 
-from ruyaml import YAML
-
-import tqdm
-
-from typing import Any, List, Set, Tuple, Dict
-
-TEST_SUBSETS = ["vggface2_MTCNN", "CelebA_MTCNN"]
+TEST_SUBSETS = {
+    "faces": ["vggface2_MTCNN", "CelebA_MTCNN"],
+    "fullbody": ["Market-1501"]}
 
 METRICS_COLUMN_NAME_MAP = {
     "lambda": "Lambda",
@@ -50,6 +49,7 @@ def main(
     output_directory: str,
     skip_verification_rocs: bool = False,
     skip_verification_metrics: bool = False,
+    is_fullbody: bool = False
 ):
 
     print("Input Directory: ", input_directory)
@@ -59,15 +59,22 @@ def main(
     lambda_values = get_lambdas(input_directory)
     print("Lamba Values found: ", lambda_values)
 
+    if is_fullbody:
+        test_datasets = TEST_SUBSETS["fullbody"]
+    else:
+        test_datasets = TEST_SUBSETS["faces"]
+
     aggregate_verification_tests(
         input_directory,
         lambda_values,
         output_directory,
         skip_verification_rocs,
         skip_verification_metrics,
+        test_datasets
     )
 
-    aggregate_aem_results(input_directory, lambda_values, output_directory)
+    aggregate_aem_results(
+        input_directory, lambda_values, output_directory, test_datasets)
 
 
 def plot_relative_losses(
@@ -129,12 +136,13 @@ def aggregate_aem_results(
     input_directory: str,
     lambda_values: List[str],
     output_directory: str,
+    test_datasets: List[str]
 ):
     output_directory = os.path.join(output_directory, "aems")
     os.makedirs(output_directory, exist_ok=True)
 
     # Get the sub-dataset combinartions.
-    aem_experiments = list(sorted(itertools.product(TEST_SUBSETS, TEST_SUBSETS)))
+    aem_experiments = list(sorted(itertools.product(test_datasets, test_datasets)))
 
     yaml = YAML(typ="safe")
 
@@ -220,13 +228,14 @@ def aggregate_verification_tests(
     output_directory: str,
     skip_verification_rocs: bool,
     skip_verification_metrics: bool,
+    test_datasets: List[str]
 ):
     verification_test_output = os.path.join(output_directory, "feature_tests")
     os.makedirs(verification_test_output, exist_ok=True)
 
     keys = get_attribute_specific_metric_keys(input_directory)
 
-    for test_set in TEST_SUBSETS:
+    for test_set in test_datasets:
         for key in keys:
             if not skip_verification_metrics:
                 aggregate_verification_metrics(
@@ -435,6 +444,7 @@ if __name__ == "__main__":
     parser.add_argument("output_directory", metavar="DIR")
     parser.add_argument("--skip-verification-rocs", action="store_true")
     parser.add_argument("--skip-verification-metrics", action="store_true")
+    parser.add_argument("--fullbody", action="store_true")
     args = parser.parse_args()
 
     main(
@@ -442,4 +452,5 @@ if __name__ == "__main__":
         args.output_directory,
         args.skip_verification_rocs,
         args.skip_verification_metrics,
+        args.fullbody
     )
