@@ -1,14 +1,19 @@
 trainer:
   default_root_dir: /home/gbrown/results/houshou/semihard_mining/debug
 model:
-  loss_f: SEMIHARD_MINED_TRIPLETS
-  loss_a: UNIFORM_KLDIVERGENCE
-  learning_rate: 0.01
-  verifier_args:
-    batch_size: 512
-    debug: false
-    seed: 42
-    n_splits: 10
+  class_path: houshou.systems.TwoStageMultitaskTrainer
+  init_args:
+    loss_f: SEMIHARD_MINED_TRIPLETS
+    loss_a: UNIFORM_KLDIVERGENCE
+    learning_rate: 0.01
+    lambda_value: -1
+    classification_training_scenario: false
+    reverse_attribute_gradient: false
+    verifier_args:
+      batch_size: 512
+      debug: false
+      seed: 42
+      n_splits: 10
 data:
   class_path: houshou.data.Market1501
   init_args:

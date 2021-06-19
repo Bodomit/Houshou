@@ -4,8 +4,10 @@ model:
   class_path: houshou.systems.MultitaskTrainer
   init_args:
     loss: SEMIHARD_CROSSENTROPY
-    lambda_value: 0.5
+    lambda_value: -1
     learning_rate: 0.01
+    classification_training_scenario: false
+    reverse_attribute_gradient: false
     verifier_args:
       batch_size: 256
       debug: false
