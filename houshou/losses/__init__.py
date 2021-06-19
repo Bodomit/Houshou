@@ -1,13 +1,15 @@
 from enum import Enum, auto
 from typing import Type
 
-from .attribute_losses import CrossEntropy, UniformTargetKLDivergence
+from .attribute_losses import (CrossEntropy, CrossEntropyAttribute,
+                               UniformTargetKLDivergence)
 from .base import LossBase, WeightedMultitaskLoss
 from .semihard_triplet_miner import SemiHardTripletMiner
 
 
 class LOSS(Enum):
     CROSSENTROPY = auto()
+    CROSSENTROPY_ATTRIBUTE = auto()
     UNIFORM_KLDIVERGENCE = auto()
     SEMIHARD_MINED_TRIPLETS = auto()
 
@@ -18,6 +20,8 @@ class LOSS(Enum):
 def get_loss(loss: LOSS, **kwargs) -> LossBase:
     if loss == LOSS.CROSSENTROPY:
         return CrossEntropy(**kwargs)
+    elif loss == LOSS.CROSSENTROPY_ATTRIBUTE:
+        return CrossEntropyAttribute(**kwargs)
     elif loss == LOSS.UNIFORM_KLDIVERGENCE:
         return UniformTargetKLDivergence(**kwargs)
     elif loss == LOSS.SEMIHARD_MINED_TRIPLETS:
