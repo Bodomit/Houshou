@@ -4,11 +4,10 @@ import itertools
 import os
 import pickle
 import re
-import shutil
-import warnings
 from typing import Any, Dict, List, Set, Tuple
 
 import matplotlib.pyplot as plt
+import matplotlib.ticker
 import numpy as np
 import pandas as pd
 import tqdm
@@ -209,17 +208,20 @@ def get_attribute_specific_metric_keys(input_directory: str):
         "*",
         "feature_tests",
         "*",
+        "*",
         "roc_curves*.pickle",
     )
 
     filepaths = glob.glob(pattern)
 
+    n_classes: Set[str] = set([])
     keys: Set[str] = set([])
     for filepath in filepaths:
-        match = re.search(r"roc_curves([\w]+).pickle", filepath)
+        match = re.search(r"([\d]+)/roc_curves([\w]+).pickle", filepath)
         if match:
-            keys.add(match.groups()[0])
-    return keys
+            n_classes.add(match.groups()[0])
+            keys.add(match.groups()[1])
+    return n_classes, keys
 
 
 def aggregate_verification_tests(
@@ -233,27 +235,68 @@ def aggregate_verification_tests(
     verification_test_output = os.path.join(output_directory, "feature_tests")
     os.makedirs(verification_test_output, exist_ok=True)
 
-    keys = get_attribute_specific_metric_keys(input_directory)
+    n_classes, keys = get_attribute_specific_metric_keys(input_directory)
 
     for test_set in test_datasets:
-        for key in keys:
-            if not skip_verification_metrics:
-                aggregate_verification_metrics(
-                    input_directory,
-                    test_set,
-                    lambda_values,
-                    verification_test_output,
-                    key,
-                )
 
-            if not skip_verification_rocs:
-                plot_verification_curve(
-                    input_directory,
-                    test_set,
-                    lambda_values,
-                    verification_test_output,
-                    key,
-                )
+        auc_for_lambdas_for_n_classes: Dict[int, Dict[str, float]] = {}
+        for n_class in n_classes:
+
+            print("Test Set: ", test_set)
+            print("N Classes: ", n_class)
+
+            for key in keys:
+                if not skip_verification_metrics:
+                    aggregate_verification_metrics(
+                        input_directory,
+                        test_set,
+                        lambda_values,
+                        verification_test_output,
+                        n_class,
+                        key
+                    )
+
+                if not skip_verification_rocs:
+                    aucs_for_lambdas_for_n_class = plot_verification_curve(
+                        input_directory,
+                        test_set,
+                        lambda_values,
+                        verification_test_output,
+                        n_class,
+                        key
+                    )
+                    auc_for_lambdas_for_n_classes[int(n_class)] = aucs_for_lambdas_for_n_class
+            print()
+
+        plot_aucs_per_lambda_vs_n_classes(auc_for_lambdas_for_n_classes, verification_test_output, test_set)
+
+
+def plot_aucs_per_lambda_vs_n_classes(auc_for_lambdas_for_n_classes, verification_test_output, test_set):
+
+    output_path = os.path.join(verification_test_output, f"auc_per_nclass_{test_set}")
+
+    df = pd.DataFrame.from_records(auc_for_lambdas_for_n_classes).T.sort_index()
+
+    column_names = df.columns.astype(str)
+    lambda_names = column_names.tolist()
+    lambda_names = [f"$\\lambda = {str(x)}$" for x in lambda_names]
+
+    ax = df.plot(figsize=(10, 8))
+    fig = ax.get_figure()
+
+    ax.legend(lambda_names)
+
+    ax.set_xscale("log")
+    ax.set_xticks(df.index.tolist())
+    ax.get_xaxis().set_major_formatter(matplotlib.ticker.ScalarFormatter())
+
+    ax.set_xlabel("Number of Classes")
+    ax.set_ylabel("ROC-AUC")
+    ax.set_title(f"ROC-AUC vs Number of Classes in Verification Scenario. Test Set: {test_set}")
+
+    fig.savefig(output_path + ".svg")
+    fig.savefig(output_path + ".png")
+    plt.close()
 
 
 def aggregate_verification_metrics(
@@ -261,6 +304,7 @@ def aggregate_verification_metrics(
     test_set: str,
     lambda_values: List[str],
     output_directory: str,
+    n_classes: str,
     key: str,
 ):
     # Get the metrics for each lambda.
@@ -276,6 +320,7 @@ def aggregate_verification_metrics(
             str(lambda_value),
             "feature_tests",
             test_set,
+            n_classes,
             f"verification{key}.csv",
         )
         split_metrics = read_metrics(metric_path)
@@ -293,7 +338,7 @@ def aggregate_verification_metrics(
 
     # Save the full metrics.
     os.makedirs(os.path.join(output_directory, test_set), exist_ok=True)
-    df.to_csv(os.path.join(output_directory, test_set, f"verification{key}.csv"))
+    df.to_csv(os.path.join(output_directory, test_set, f"verification_{n_classes}{key}.csv"))
 
     # Give the columns for readable names.
     new_column_names = [METRICS_COLUMN_NAME_MAP[n] for n in df.columns]
@@ -303,7 +348,7 @@ def aggregate_verification_metrics(
     df = df.round(3)
 
     # Save the full version in markdown.
-    path = os.path.join(output_directory, test_set, f"verification_full{key}.md")
+    path = os.path.join(output_directory, test_set, f"verification_full_{n_classes}{key}.md")
     md_str = df.to_markdown()
     assert isinstance(md_str, str)
     with open(path, "w") as outfile:
@@ -317,7 +362,7 @@ def aggregate_verification_metrics(
     del df["FN"]
     del df["TP"]
 
-    path = os.path.join(output_directory, test_set, f"metrics_partial{key}.md")
+    path = os.path.join(output_directory, test_set, f"verification_partial_{n_classes}{key}.md")
     md_str = df.to_markdown()
     assert isinstance(md_str, str)
     with open(path, "w") as outfile:
@@ -338,8 +383,9 @@ def plot_verification_curve(
     test_set: str,
     lambda_values: List[str],
     output_directory: str,
+    n_class: str,
     key: str,
-) -> None:
+) -> Dict[str, float]:
 
     # Get the roc values for each lambda.
     roc_for_lambda: Dict[str, ROC] = {}
@@ -354,6 +400,7 @@ def plot_verification_curve(
             str(lambda_value),
             "feature_tests",
             test_set,
+            n_class,
             f"roc_curves{key}.pickle",
         )
         split_rocs = read_rocs(roc_path)
@@ -364,12 +411,14 @@ def plot_verification_curve(
     plt.figure(figsize=(10, 8))
     lw = 2
 
+    aucs_for_lambda: Dict[str, float] = {}
     for lambda_value in sort_lambdas(lambda_values):
         fpr, tpr, auc = roc_for_lambda[lambda_value]
         label = f"$\\lambda = {lambda_value} ({auc:0.2f})$"
         plt.plot(fpr, tpr, lw=lw, alpha=1.0, label=label)
+        aucs_for_lambda[lambda_value] = auc
 
-    title = f"Receiver Operating Characteristic (ROC) - Test Set: {test_set}"
+    title = f"Receiver Operating Characteristic (ROC) - Test Set: {test_set} N Classes: {n_class}"
 
     if key != "":
         key_name = str.join(", ", key[1:].split("_"))
@@ -386,9 +435,11 @@ def plot_verification_curve(
     plt.show()
 
     os.makedirs(output_directory, exist_ok=True)
-    plt.savefig(os.path.join(output_directory, test_set, f"roc_curves{key}.svg"))
-    plt.savefig(os.path.join(output_directory, test_set, f"roc_curves{key}.png"))
+    plt.savefig(os.path.join(output_directory, test_set, f"roc_curves_{n_class}{key}.svg"))
+    plt.savefig(os.path.join(output_directory, test_set, f"roc_curves_{n_class}{key}.png"))
     plt.close()
+
+    return aucs_for_lambda
 
 
 def get_mean_roc(split_rocs: SPLIT_ROCS) -> ROC:

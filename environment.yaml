@@ -15,6 +15,7 @@ dependencies:
   - pytest
   - tqdm
   - scikit-learn
+  - tabulate
   - pip:
     - black
     - facenet-pytorch
