@@ -364,7 +364,13 @@ class CVThresholdingVerifier(Verifier):
         train_fpr, train_tpr, train_thresholds = metrics.roc_curve(
             train_y, -train_x  # type: ignore
         )
-        auc = metrics.roc_auc_score(train_y, -train_x)  # type: ignore
+
+        test_fpr, test_tpr, test_thresholds = metrics.roc_curve(
+            test_y, -test_x  # type: ignore
+        )
+
+        train_auc = metrics.roc_auc_score(train_y, -train_x)
+        test_auc = metrics.roc_auc_score(test_y, -test_x)
 
         assert isinstance(train_fpr, np.ndarray)
         assert isinstance(train_tpr, np.ndarray)
@@ -389,7 +395,8 @@ class CVThresholdingVerifier(Verifier):
         ).ravel()
 
         verification_metrics = {
-            "train_auc": auc,
+            "train_auc": train_auc,
+            "test_auc": test_auc,
             "threshold": optimal_threshold,
             "true_negatives": tn,
             "false_positives": fp,
@@ -403,7 +410,7 @@ class CVThresholdingVerifier(Verifier):
             "frr": fn / (fn + tp),
         }
 
-        return verification_metrics, (train_fpr, train_tpr, train_thresholds)
+        return verification_metrics, (test_fpr, test_tpr, test_thresholds)
 
 
 class DataMapDataset(Dataset):
