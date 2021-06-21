@@ -16,11 +16,13 @@ from sklearn.metrics import auc
 
 TEST_SUBSETS = {
     "faces": ["vggface2_MTCNN", "CelebA_MTCNN"],
-    "fullbody": ["Market-1501"]}
+    "fullbody": ["Market-1501"],
+}
 
 METRICS_COLUMN_NAME_MAP = {
     "lambda": "Lambda",
-    "train_auc": "AUC",
+    "train_auc": "Train AUC",
+    "test_auc": "Test AUC",
     "threshold": "Threshold",
     "true_negatives": "TN",
     "false_positives": "FP",
@@ -48,7 +50,7 @@ def main(
     output_directory: str,
     skip_verification_rocs: bool = False,
     skip_verification_metrics: bool = False,
-    is_fullbody: bool = False
+    is_fullbody: bool = False,
 ):
 
     print("Input Directory: ", input_directory)
@@ -69,11 +71,12 @@ def main(
         output_directory,
         skip_verification_rocs,
         skip_verification_metrics,
-        test_datasets
+        test_datasets,
     )
 
     aggregate_aem_results(
-        input_directory, lambda_values, output_directory, test_datasets)
+        input_directory, lambda_values, output_directory, test_datasets
+    )
 
 
 def plot_relative_losses(
@@ -135,7 +138,7 @@ def aggregate_aem_results(
     input_directory: str,
     lambda_values: List[str],
     output_directory: str,
-    test_datasets: List[str]
+    test_datasets: List[str],
 ):
     output_directory = os.path.join(output_directory, "aems")
     os.makedirs(output_directory, exist_ok=True)
@@ -202,12 +205,12 @@ def aggregate_aem_results(
             outfile.write(md_str)
 
 
-def get_attribute_specific_metric_keys(input_directory: str):
+def get_attribute_specific_metric_keys(input_directory: str, test_set: str):
     pattern = os.path.join(
         input_directory,
         "*",
         "feature_tests",
-        "*",
+        test_set,
         "*",
         "roc_curves*.pickle",
     )
@@ -230,17 +233,17 @@ def aggregate_verification_tests(
     output_directory: str,
     skip_verification_rocs: bool,
     skip_verification_metrics: bool,
-    test_datasets: List[str]
+    test_datasets: List[str],
 ):
     verification_test_output = os.path.join(output_directory, "feature_tests")
     os.makedirs(verification_test_output, exist_ok=True)
 
-    n_classes, keys = get_attribute_specific_metric_keys(input_directory)
-
     for test_set in test_datasets:
 
+        n_classes, keys = get_attribute_specific_metric_keys(input_directory, test_set)
+
         auc_for_lambdas_for_n_classes: Dict[int, Dict[str, float]] = {}
-        for n_class in n_classes:
+        for n_class in sorted(n_classes, key=lambda s: int(s)):
 
             print("Test Set: ", test_set)
             print("N Classes: ", n_class)
@@ -253,7 +256,7 @@ def aggregate_verification_tests(
                         lambda_values,
                         verification_test_output,
                         n_class,
-                        key
+                        key,
                     )
 
                 if not skip_verification_rocs:
@@ -263,15 +266,21 @@ def aggregate_verification_tests(
                         lambda_values,
                         verification_test_output,
                         n_class,
-                        key
+                        key,
                     )
-                    auc_for_lambdas_for_n_classes[int(n_class)] = aucs_for_lambdas_for_n_class
+                    auc_for_lambdas_for_n_classes[
+                        int(n_class)
+                    ] = aucs_for_lambdas_for_n_class
             print()
 
-        plot_aucs_per_lambda_vs_n_classes(auc_for_lambdas_for_n_classes, verification_test_output, test_set)
+        plot_aucs_per_lambda_vs_n_classes(
+            auc_for_lambdas_for_n_classes, verification_test_output, test_set
+        )
 
 
-def plot_aucs_per_lambda_vs_n_classes(auc_for_lambdas_for_n_classes, verification_test_output, test_set):
+def plot_aucs_per_lambda_vs_n_classes(
+    auc_for_lambdas_for_n_classes, verification_test_output, test_set
+):
 
     output_path = os.path.join(verification_test_output, f"auc_per_nclass_{test_set}")
 
@@ -292,7 +301,9 @@ def plot_aucs_per_lambda_vs_n_classes(auc_for_lambdas_for_n_classes, verificatio
 
     ax.set_xlabel("Number of Classes")
     ax.set_ylabel("ROC-AUC")
-    ax.set_title(f"ROC-AUC vs Number of Classes in Verification Scenario. Test Set: {test_set}")
+    ax.set_title(
+        f"ROC-AUC vs Number of Classes in Verification Scenario. Test Set: {test_set}"
+    )
 
     fig.savefig(output_path + ".svg")
     fig.savefig(output_path + ".png")
@@ -338,7 +349,9 @@ def aggregate_verification_metrics(
 
     # Save the full metrics.
     os.makedirs(os.path.join(output_directory, test_set), exist_ok=True)
-    df.to_csv(os.path.join(output_directory, test_set, f"verification_{n_classes}{key}.csv"))
+    df.to_csv(
+        os.path.join(output_directory, test_set, f"verification_{n_classes}{key}.csv")
+    )
 
     # Give the columns for readable names.
     new_column_names = [METRICS_COLUMN_NAME_MAP[n] for n in df.columns]
@@ -348,7 +361,9 @@ def aggregate_verification_metrics(
     df = df.round(3)
 
     # Save the full version in markdown.
-    path = os.path.join(output_directory, test_set, f"verification_full_{n_classes}{key}.md")
+    path = os.path.join(
+        output_directory, test_set, f"verification_full_{n_classes}{key}.md"
+    )
     md_str = df.to_markdown()
     assert isinstance(md_str, str)
     with open(path, "w") as outfile:
@@ -362,7 +377,9 @@ def aggregate_verification_metrics(
     del df["FN"]
     del df["TP"]
 
-    path = os.path.join(output_directory, test_set, f"verification_partial_{n_classes}{key}.md")
+    path = os.path.join(
+        output_directory, test_set, f"verification_partial_{n_classes}{key}.md"
+    )
     md_str = df.to_markdown()
     assert isinstance(md_str, str)
     with open(path, "w") as outfile:
@@ -435,8 +452,12 @@ def plot_verification_curve(
     plt.show()
 
     os.makedirs(output_directory, exist_ok=True)
-    plt.savefig(os.path.join(output_directory, test_set, f"roc_curves_{n_class}{key}.svg"))
-    plt.savefig(os.path.join(output_directory, test_set, f"roc_curves_{n_class}{key}.png"))
+    plt.savefig(
+        os.path.join(output_directory, test_set, f"roc_curves_{n_class}{key}.svg")
+    )
+    plt.savefig(
+        os.path.join(output_directory, test_set, f"roc_curves_{n_class}{key}.png")
+    )
     plt.close()
 
     return aucs_for_lambda
@@ -503,5 +524,5 @@ if __name__ == "__main__":
         args.output_directory,
         args.skip_verification_rocs,
         args.skip_verification_metrics,
-        args.fullbody
+        args.fullbody,
     )
