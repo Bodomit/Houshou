@@ -2,17 +2,20 @@ trainer:
   default_root_dir: /home/gbrown/results/houshou/semihard_mining/debug
   fast_dev_run: true
 model:
-  loss_f: CROSSENTROPY
-  loss_a: UNIFORM_KLDIVERGENCE
-  learning_rate: 0.01
-  weight_attributes: true
-  classification_training_scenario: true
-  n_classes: 8213
-  verifier_args:
-    batch_size: 512
-    debug: true
-    seed: 42
-    n_splits: 10
+  class_path: houshou.systems.TwoStageMultitaskTrainer
+  init_args:
+    loss_f: CROSSENTROPY
+    loss_a: UNIFORM_KLDIVERGENCE
+    learning_rate: 0.01
+    weight_attributes: true
+    classification_training_scenario: true
+    reverse_attribute_gradient: false
+    n_classes: 8213
+    verifier_args:
+      batch_size: 512
+      debug: true
+      seed: 42
+      n_splits: 10
 data:
   class_path: houshou.data.VGGFace2
   init_args:
