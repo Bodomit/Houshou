@@ -6,7 +6,7 @@
 #SBATCH --mem=200GB
 #SBATCH --gres=gpu:1
 #SBATCH --output=/mnt/scratch2/users/40057686/logs/houshou/%A-%a.log
-#SBATCH --time=60
+#SBATCH --time=1-0
 
 # Invoke with sbatch --array=0-10 ./scripts/run_features_tests_for_alphas.sh $RESULTS_ROOT_DIR
 
