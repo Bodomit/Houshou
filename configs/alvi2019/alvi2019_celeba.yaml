@@ -11,6 +11,7 @@ model:
     weight_attributes: true
     n_classes: 8192
     lambda_value: -1
+    reverse_attribute_gradient: false
     verifier_args:
       batch_size: 512
       debug: false
