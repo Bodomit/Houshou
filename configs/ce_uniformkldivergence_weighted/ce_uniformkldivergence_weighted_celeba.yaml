@@ -5,11 +5,12 @@ model:
   init_args:
     loss_f: CROSSENTROPY
     loss_a: UNIFORM_KLDIVERGENCE
-    learning_rate: 0.01
+    learning_rate: 0.001
     weight_attributes: true
     classification_training_scenario: true
     reverse_attribute_gradient: false
     n_classes: 8192
+    lambda_value: -1
     verifier_args:
       batch_size: 512
       debug: false
