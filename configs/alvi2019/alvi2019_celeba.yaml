@@ -1,0 +1,26 @@
+trainer:
+  default_root_dir: /home/gbrown/results/houshou/alvi2019/debug
+  max_epochs: 60
+model:
+  class_path: houshou.systems.Alvi2019
+  init_args:
+    loss_f: CROSSENTROPY
+    loss_a: UNIFORM_KLDIVERGENCE
+    classification_training_scenario: True
+    learning_rate: 0.01
+    weight_attributes: true
+    n_classes: 8192
+    lambda_value: -1
+    verifier_args:
+      batch_size: 512
+      debug: false
+      seed: 42
+      n_splits: 10
+data:
+  class_path: houshou.data.CelebA
+  init_args:
+    data_dir: CelebA_MTCNN
+    batch_size: 512
+    buffer_size: null
+    attribute:
+      - Male
