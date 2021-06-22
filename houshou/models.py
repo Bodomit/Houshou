@@ -18,7 +18,7 @@ class FeatureModel(pl.LightningModule):
             self.resnet = nn.Sequential(*(list(resnet.children())[:-1]), nn.Dropout(p=dropout_prob), nn.Flatten())
         else:
             self.resnet = InceptionResnetV1(
-                pretrained="vggface2" if use_pretrained else False, classify=False, num_classes=None, dropout_prob=dropout_prob
+                pretrained="vggface2" if use_pretrained else None, classify=False, num_classes=None, dropout_prob=dropout_prob
             )
 
             if use_extra_fc_layers:
