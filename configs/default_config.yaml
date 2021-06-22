@@ -65,6 +65,7 @@ model:
     weight_attributes: false
     classification_training_scenario: false
     n_classes: null
+    use_pretrained: false
     verifier_args:
       batch_size: 512
       debug: false

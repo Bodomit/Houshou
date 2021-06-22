@@ -10,6 +10,7 @@ model:
     classification_training_scenario: false
     reverse_attribute_gradient: false
     weight_attributes: true
+    use_pretrained: false
     verifier_args:
       batch_size: 512
       debug: false
