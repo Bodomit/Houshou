@@ -8,7 +8,7 @@
 #SBATCH --output=/mnt/scratch2/users/40057686/logs/houshou/%A-%a.log
 #SBATCH --time=3-0
 
-# Invoke with sbatch --array=0-10 ./scripts/run_aems_for_alphas.sh $RESULTS_ROOT_DIR
+# Invoke with sbatch --array=0-11 ./scripts/run_aems_for_alphas.sh $RESULTS_ROOT_DIR
 
 module add nvidia-cuda
 
@@ -19,7 +19,7 @@ ALPHA_ID=${SLURM_ARRAY_TASK_ID:-0}
 
 echo "ALPHA_ID: $ALPHA_ID"
 
-ALPHAS=(0 0.001 0.01 0.1 0.3 0.5 0.7 0.9 0.99 0.999 0.9999)
+ALPHAS=(0 0.0001 0.001 0.01 0.1 0.3 0.5 0.7 0.9 0.99 0.999 0.9999 0.75 0.8 0.85)
 ALPHA=${ALPHAS[$ALPHA_ID]}
 
 RESULTSDIR=$RESULTS_ROOT_DIR/$ALPHA
