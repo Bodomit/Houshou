@@ -7,15 +7,16 @@ from facenet_pytorch import InceptionResnetV1
 
 
 class FeatureModel(pl.LightningModule):
-    def __init__(self, dropout_prob: float = 0.6, use_resnet18=False, **kwargs):
+    def __init__(self, dropout_prob: float = 0.6, use_resnet18=False, use_pretrained=False, **kwargs):
         super().__init__()
         self.save_hyperparameters()
         if use_resnet18:
+            assert use_pretrained is False
             resnet = torch.hub.load('pytorch/vision:v0.9.0', 'resnet18', pretrained=False)
-            self.resnet = nn.Sequential(*(list(resnet.children())[:-1]), nn.Flatten())
+            self.resnet = nn.Sequential(*(list(resnet.children())[:-1]), nn.Dropout(p=dropout_prob), nn.Flatten())
         else:
             self.resnet = InceptionResnetV1(
-                pretrained=None, classify=False, num_classes=None, dropout_prob=dropout_prob
+                pretrained="vggface2" if use_pretrained else False, classify=False, num_classes=None, dropout_prob=dropout_prob
             )
 
     def forward(self, x):
@@ -91,6 +92,7 @@ class MultiTaskTrainingModel(pl.LightningModule):
         classification_training_scenario: bool = False,
         use_resnet18: bool = False,
         use_short_attribute_branch: bool = False,
+        use_pretrained: bool = False,
         **kwargs
     ):
         super().__init__()
@@ -106,6 +108,7 @@ class MultiTaskTrainingModel(pl.LightningModule):
             feature_model_path,
             use_resnet18=use_resnet18,
             use_short_attribute_branch=use_short_attribute_branch,
+            use_pretrained=use_pretrained,
             **kwargs
         )
 
