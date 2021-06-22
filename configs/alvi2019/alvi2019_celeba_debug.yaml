@@ -15,6 +15,7 @@ model:
     reverse_attribute_gradient: false
     use_pretrained: true
     use_extra_fc_layers: true
+    use_short_attribute_branch: true
     verifier_args:
       batch_size: 512
       debug: true
