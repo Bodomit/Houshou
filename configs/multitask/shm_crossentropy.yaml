@@ -10,6 +10,7 @@ model:
     reverse_attribute_gradient: false
     weight_attributes: false
     use_pretrained: false
+    use_extra_fc_layers: false
     verifier_args:
       batch_size: 256
       debug: false
