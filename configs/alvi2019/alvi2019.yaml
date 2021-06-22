@@ -7,7 +7,7 @@ model:
     loss_f: CROSSENTROPY
     loss_a: UNIFORM_KLDIVERGENCE
     classification_training_scenario: True
-    learning_rate: 0.001
+    learning_rate: 0.01
     weight_attributes: true
     n_classes: 8213
     lambda_value: -1
