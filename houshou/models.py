@@ -58,10 +58,7 @@ class AttributeExtractionModel(pl.LightningModule):
                 nn.LeakyReLU(),
                 nn.Linear(128, 32),
                 nn.LeakyReLU(),
-                nn.Linear(32, 16),
-                nn.LeakyReLU(),
-                nn.Linear(16, n_outputs),
-            )
+                nn.Linear(32, n_outputs))
         else:
             self.full_model = nn.Sequential(
                 nn.Flatten(),
