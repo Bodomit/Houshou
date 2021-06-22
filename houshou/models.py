@@ -9,6 +9,7 @@ from facenet_pytorch import InceptionResnetV1
 class FeatureModel(pl.LightningModule):
     def __init__(self, dropout_prob: float = 0.6, use_resnet18=False, use_pretrained=False, use_extra_fc_layers=False, **kwargs):
         super().__init__()
+        self.use_pretrained = use_pretrained
         self.save_hyperparameters()
         if use_resnet18:
             assert use_pretrained is False

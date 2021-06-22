@@ -63,6 +63,11 @@ class Alvi2019(MultitaskTrainer):
             return -1
 
     def training_step_Ls(self, batch, batch_idx):
+
+        # Train attribute model only.
+        self.model.freeze()
+        self.model.attribute_model.unfreeze()
+
         opt = self.optimizers()
         assert isinstance(opt, torch.optim.Optimizer)
         opt.zero_grad()
@@ -70,10 +75,6 @@ class Alvi2019(MultitaskTrainer):
         # Get the batch.
         xb, (_, ab) = batch
         ab = ab.squeeze()
-
-        # Train attribute model only.
-        self.model.feature_model.freeze()
-        self.model.attribute_model.unfreeze()
 
         _, attribute_pred = self.model(xb)
 
@@ -90,6 +91,18 @@ class Alvi2019(MultitaskTrainer):
         opt.zero_grad()
 
     def training_step_Lp_Lconf(self, batch, batch_idx):
+
+        # Train on the FC layers in the model only.
+        self.model.unfreeze()
+        self.model.attribute_model.freeze()
+
+        # If using the pretrained model, only unfreeze the extra fc layers.
+        if self.model.feature_model.use_pretrained:
+            self.model.feature_model.resnet.requires_grad = False
+            self.model.feature_model.extra_fc.requires_grad = True
+        else:
+            self.model.feature_model.unfreeze()
+
         opt = self.optimizers()
         assert isinstance(opt, torch.optim.Optimizer)
         opt.zero_grad()
@@ -97,10 +110,6 @@ class Alvi2019(MultitaskTrainer):
         # Get the batch.
         xb, (yb, ab) = batch
         ab = ab.squeeze()
-
-        # Train on feature model only.
-        self.model.feature_model.unfreeze()
-        self.model.attribute_model.freeze()
 
         logits, attribute_pred = self.model(xb)
 
