@@ -12,6 +12,8 @@ model:
     weight_attributes: true
     use_resnet18: true
     use_short_attribute_branch: true
+    use_pretrained: false
+    use_extra_fc_layers: false
     verifier_args:
       batch_size: 512
       debug: false

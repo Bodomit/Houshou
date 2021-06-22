@@ -12,6 +12,8 @@ model:
     reverse_attribute_gradient: false
     n_classes: 8192
     lambda_value: -1
+    use_pretrained: false
+    use_extra_fc_layers: false
     verifier_args:
       batch_size: 512
       debug: true

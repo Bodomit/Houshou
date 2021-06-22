@@ -7,31 +7,40 @@ from facenet_pytorch import InceptionResnetV1
 
 
 class FeatureModel(pl.LightningModule):
-    def __init__(self, dropout_prob: float = 0.6, use_resnet18=False, **kwargs):
+    def __init__(self, dropout_prob: float = 0.6, use_resnet18=False, use_pretrained=False, use_extra_fc_layers=False, **kwargs):
         super().__init__()
+        self.use_pretrained = use_pretrained
         self.save_hyperparameters()
         if use_resnet18:
+            assert use_pretrained is False
+            assert use_extra_fc_layers is False
             resnet = torch.hub.load('pytorch/vision:v0.9.0', 'resnet18', pretrained=False)
-            self.resnet = nn.Sequential(*(list(resnet.children())[:-1]), nn.Flatten())
+            self.resnet = nn.Sequential(*(list(resnet.children())[:-1]), nn.Dropout(p=dropout_prob), nn.Flatten())
         else:
             self.resnet = InceptionResnetV1(
-                pretrained=None, classify=False, num_classes=None, dropout_prob=dropout_prob
+                pretrained="vggface2" if use_pretrained else False, classify=False, num_classes=None, dropout_prob=dropout_prob
             )
 
+            if use_extra_fc_layers:
+                self.extra_fc = nn.Sequential(nn.Linear(512, 512), nn.Linear(512, 512), nn.Linear(512, 512))
+                self.feature_model = nn.Sequential(self.resnet, self.extra_fc)
+            else:
+                self.feature_model = self.resnet
+
     def forward(self, x):
-        return self.resnet(x)
+        return self.feature_model(x)
 
 
 class ClassificationModel(FeatureModel):
-    def __init__(self, n_classes: int, dropout_prob: float = 0.6, **kwargs) -> None:
-        super().__init__(dropout_prob=dropout_prob, **kwargs)
+    def __init__(self, n_classes: int, **kwargs) -> None:
+        super().__init__(**kwargs)
         self.save_hyperparameters()
         self.n_classes = n_classes
 
         self.logits = nn.Linear(512, self.n_classes)
 
     def forward(self, x):
-        features = self.resnet(x)
+        features = self.feature_model(x)
         logits = self.logits(features)
 
         return logits, features
@@ -91,6 +100,8 @@ class MultiTaskTrainingModel(pl.LightningModule):
         classification_training_scenario: bool = False,
         use_resnet18: bool = False,
         use_short_attribute_branch: bool = False,
+        use_pretrained: bool = False,
+        use_extra_fc_layers: bool = False,
         **kwargs
     ):
         super().__init__()
@@ -106,6 +117,8 @@ class MultiTaskTrainingModel(pl.LightningModule):
             feature_model_path,
             use_resnet18=use_resnet18,
             use_short_attribute_branch=use_short_attribute_branch,
+            use_pretrained=use_pretrained,
+            use_extra_fc_layers=use_extra_fc_layers,
             **kwargs
         )
 

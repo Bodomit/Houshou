@@ -12,6 +12,8 @@ model:
     classification_training_scenario: true
     reverse_attribute_gradient: true
     n_classes: 8192
+    use_pretrained: false
+    use_extra_fc_layers: false
     verifier_args:
       batch_size: 512
       debug: true
