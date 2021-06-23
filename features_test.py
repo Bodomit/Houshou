@@ -11,7 +11,7 @@ from houshou.data import CelebA, Market1501, VGGFace2
 from houshou.data.celeba import CelebADataset
 from houshou.data.market_1501 import Market1501Dataset
 from houshou.data.vggface2 import VGGFace2Dataset
-from houshou.metrics import CVThresholdingVerifier
+from houshou.metrics import CVThresholdingVerifier, ReidentificationTester
 from houshou.models import FeatureModel
 from houshou.systems import (Alvi2019, MultitaskTrainer,
                              TwoStageMultitaskTrainer)
@@ -80,6 +80,16 @@ def main(experiment_path: str, trainer_type: str, batch_size: int, is_debug: boo
 
             print(f"N Classes: {n_classes}")
 
+            reid_scenario(
+                experiment_path,
+                dataset_name,
+                n_classes,
+                batch_size,
+                is_debug,
+                test_dataloader,
+                feature_model,
+                device)
+
             verification_scenario(
                 experiment_path,
                 dataset_name,
@@ -114,6 +124,26 @@ def backwards_compatible_load(
     return new_model
 
 
+def reid_scenario(
+        experiment_path: str,
+        dataset_name: str,
+        n_classes: int,
+        batch_size: int,
+        is_debug: bool,
+        test_dataloader: DataLoader,
+        feature_model: torch.nn.Module,
+        device: torch.device):
+    results_dir = os.path.join(
+        experiment_path, "feature_tests", "reid", dataset_name, str(n_classes)
+    )
+    os.makedirs(results_dir, exist_ok=True)
+
+    tester = ReidentificationTester(
+        batch_size, max_n_classes=n_classes, debug=is_debug, seed=42)
+
+    tester.setup(test_dataloader)
+
+
 def verification_scenario(
         experiment_path: str,
         dataset_name: str,
@@ -125,7 +155,7 @@ def verification_scenario(
         device: torch.device):
 
     results_dir = os.path.join(
-        experiment_path, "feature_tests", dataset_name, str(n_classes)
+        experiment_path, "feature_tests", "verification", dataset_name, str(n_classes)
     )
     os.makedirs(results_dir, exist_ok=True)
 

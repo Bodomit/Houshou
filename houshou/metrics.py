@@ -7,6 +7,7 @@ import numpy as np
 import pandas as pd
 import torch
 import tqdm
+from numpy.random import default_rng
 from sklearn import metrics
 from sklearn.model_selection import KFold
 from torch import nn
@@ -455,3 +456,76 @@ class BalancedAccuracy(Metric):
         use_mask = self.total > 0
         accuracy_per_class = self.correct[use_mask].float() / self.total[use_mask]
         return torch.sum(accuracy_per_class) / self.num_classes
+
+
+class ReidentificationTester:
+    def __init__(
+        self,
+        batch_size: int,
+        max_n_classes: Optional[int],
+        debug: bool,
+        seed: int,
+    ):
+        self.batch_size = batch_size
+        self.max_n_classes = max_n_classes
+        self.rnd = np.random.RandomState(seed)
+        self.debug = debug
+        self.seed = seed
+
+    def setup(self, dataloader: DataLoader):
+        samples, data_map = self._load_data(dataloader)
+        samples_per_label = self.get_samples_per_label(samples)
+
+        if self.max_n_classes is not None:
+            classes = sorted(samples_per_label)[: self.max_n_classes]
+            samples_per_label = {c: samples_per_label[c] for c in classes}
+
+        self.gallery, self.probe = self.split_gallery_probe(
+            samples_per_label, self.seed)
+
+    @staticmethod
+    def _load_data(
+        dataloader: DataLoader,
+    ) -> Tuple[Set[AnnotatedSample], Dict[int, np.ndarray]]:
+
+        samples: Set[AnnotatedSample] = set()
+        data_map: Dict[int, np.ndarray] = {}
+
+        for db, (lb, ab) in dataloader:
+            for d, l, a in zip(db, lb, ab):
+                key = len(data_map)
+                data_map[key] = d
+                samples.add((key, int(l), int(a)))
+
+        return samples, data_map
+
+    @staticmethod
+    def get_samples_per_label(
+        data: Set[AnnotatedSample],
+    ) -> Dict[Label, Set[AnnotatedSample]]:
+        samples_per_label: Dict[Label, Set[AnnotatedSample]] = defaultdict(set)
+        for sample in data:
+            samples_per_label[sample[1]].add(sample)
+
+        return samples_per_label
+
+    @staticmethod
+    def split_gallery_probe(
+            samples_per_label: Dict[Label, Set[AnnotatedSample]],
+            seed: int) -> Tuple[Set[AnnotatedSample], Set[AnnotatedSample]]:
+        # Get n random numbers between 0 and 1000 for n labels
+        # to index the selected gallery image.
+        rng = default_rng(seed)
+        idxs = rng.integers(0, 1000, size=len(samples_per_label))
+
+        gallery: Set[AnnotatedSample] = set()
+        probe: Set[AnnotatedSample] = set()
+        for label, idx in zip(samples_per_label, idxs):
+            n_samples = len(samples_per_label[label])
+            sample = list(samples_per_label[label])[idx % n_samples]
+            gallery.add(sample)
+
+            other_samples = samples_per_label[label] - set([sample])
+            probe.update(other_samples)
+
+        return gallery, probe
