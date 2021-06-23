@@ -16,20 +16,27 @@ from houshou.metrics import CVThresholdingVerifier, ReidentificationTester
 from houshou.models import FeatureModel
 from houshou.systems import (Alvi2019, MultitaskTrainer,
                              TwoStageMultitaskTrainer)
-from houshou.utils import find_last_epoch_path, save_cv_verification_results
+from houshou.utils import (find_last_epoch_path, load_experiment_config,
+                           save_cv_verification_results)
 
 pl.seed_everything(42, workers=True)
 
 HOUSHOU_DATASET = Union[VGGFace2Dataset, CelebADataset, Market1501Dataset]
 
 
-def main(experiment_path: str, trainer_type: str, batch_size: int, is_debug: bool, is_fullbody: bool):
+def main(experiment_path: str, batch_size: int, is_debug: bool, is_fullbody: bool):
 
-    if trainer_type == "Alvi2019":
+    try:
+        config = load_experiment_config(experiment_path)
+        trainer_class_path = config["model"]["class_path"]
+    except KeyError:
+        trainer_class_path = "houshou.systems.TwoStageMultitaskTrainer"
+
+    if trainer_class_path == "houshou.systems.Alvi2019":
         trainer_class = Alvi2019
-    elif trainer_type == "Multitask":
+    elif trainer_class_path == "houshou.systems.MultitaskTrainer":
         trainer_class = MultitaskTrainer
-    elif trainer_type == "TwoStage":
+    elif trainer_class_path == "houshou.systems.TwoStageMultitaskTrainer":
         trainer_class = TwoStageMultitaskTrainer
     else:
         raise ValueError
@@ -122,7 +129,7 @@ def backwards_compatible_load(
     combined = OrderedDict(new_state_dict | old_state_dict)
 
     try:
-    new_model = trainer_class(**hyper_parameters)
+        new_model = trainer_class(**hyper_parameters)
     except TypeError:
         # Hack
         if "shm_uniformkldivergence" in feature_model_checkpoint_path:
@@ -226,9 +233,8 @@ def n_classes_scheduler(
 if __name__ == "__main__":
     parser = ArgumentParser()
     parser.add_argument("experiment_path")
-    parser.add_argument("trainer_type")
     parser.add_argument("--batch-size", type=int, default=512)
     parser.add_argument("--debug", action="store_true")
     parser.add_argument("--fullbody", action="store_true")
     args = parser.parse_args()
-    main(args.experiment_path, args.trainer_type, args.batch_size, args.debug, args.fullbody)
+    main(args.experiment_path, args.batch_size, args.debug, args.fullbody)
