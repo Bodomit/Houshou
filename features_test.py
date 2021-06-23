@@ -145,6 +145,12 @@ def visualise(
     all_embeddings = np.concatenate(embeddings_per_batch)
     all_attributes = np.concatenate(attributes_per_batch)
 
+    if len(all_attributes) > 10000:
+        rng = default_rng()
+        idxs = rng.integers(0, len(all_attributes), size=10000)
+        all_embeddings = all_embeddings[idxs]
+        all_attributes = all_attributes[idxs]
+ 
     tsne = TSNE(n_components=2, perplexity=perplexity, n_iter=5000, random_state=42, verbose=1)
     reduced_embeddings = tsne.fit_transform(all_embeddings)
 
