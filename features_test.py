@@ -138,10 +138,17 @@ def reid_scenario(
     )
     os.makedirs(results_dir, exist_ok=True)
 
+    # Get the tester.
     tester = ReidentificationTester(
         batch_size, max_n_classes=n_classes, debug=is_debug, seed=42)
 
+    # load the data.
     tester.setup(test_dataloader)
+
+    # Get the avg rank over all probes.
+    avg_ranks = tester.reidentification(feature_model, device)
+
+    raise NotImplementedError
 
 
 def verification_scenario(
