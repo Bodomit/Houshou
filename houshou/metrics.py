@@ -507,7 +507,7 @@ class ReidentificationTester:
 
         sum_ranks_per_batch: List[torch.Tensor] = []
 
-        for ids, data in self.probe_dataloader:
+        for ids, data in tqdm.tqdm(self.probe_dataloader, desc="Reid - Probe Batch", dynamic_ncols=True):
             # Get the probe features and labels for the batch.
             n_probe_labels_remaining = len(probe_labels)
             probe_features_batch = self.get_feature_batch(model, device, data)
