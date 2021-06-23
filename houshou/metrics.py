@@ -241,6 +241,8 @@ class Verifier:
             try:
                 auc_ap = metrics.roc_auc_score(labels_ap, np.negative(distances_ap))
             except ValueError as ex:
+                if attribute_pair[0] != attribute_pair[1]:
+                    continue
                 warnings.warn(f"Verification testing for ({attribute_pair}) failed. Skipping: " + str(ex))
                 continue
 
@@ -329,6 +331,8 @@ class CVThresholdingVerifier(Verifier):
                         labels[split_test_ap],
                     )
                 except ValueError as ex:
+                    if attribute_pair[0] != attribute_pair[1]:
+                        continue
                     warnings.warn(f"Verification testing for ({attribute_pair}) failed. Skipping: " + str(ex))
                     continue
 

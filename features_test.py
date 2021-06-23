@@ -44,7 +44,7 @@ def main(experiment_path: str, trainer_type: str, batch_size: int, is_debug: boo
         multitask_trainer = trainer_class.load_from_checkpoint(
             feature_model_checkpoint_path, verifier_args=None
         )
-    except RuntimeError:
+    except (RuntimeError, TypeError):
         multitask_trainer = backwards_compatible_load(
             feature_model_checkpoint_path, trainer_class)
 
@@ -121,7 +121,20 @@ def backwards_compatible_load(
     # Both the old and new mappings must be present.
     combined = OrderedDict(new_state_dict | old_state_dict)
 
+    try:
     new_model = trainer_class(**hyper_parameters)
+    except TypeError:
+        # Hack
+        if "shm_uniformkldivergence" in feature_model_checkpoint_path:
+            hyper_parameters["loss_a"] = "UNIFORM_KLDIVERGENCE"
+            hyper_parameters["loss_f"] = "SEMIHARD_MINED_TRIPLETS"
+            hyper_parameters["weight_attributes"] = False
+            hyper_parameters["classification_training_scenario"] = False
+            hyper_parameters["use_short_attribute_branch"] = True
+            new_model = trainer_class(**hyper_parameters)
+        else:
+            raise
+
     new_model.load_state_dict(combined)
 
     return new_model
