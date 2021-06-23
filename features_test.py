@@ -1,11 +1,15 @@
 import os
 from argparse import ArgumentParser
 from collections import OrderedDict
-from typing import Generator, Type, Union, get_args
+from typing import Generator, List, Type, Union, get_args
 
+import numpy as np
 import pandas as pd
 import pytorch_lightning as pl
+import seaborn as sns
 import torch
+import tqdm
+from sklearn.manifold import TSNE
 from torch.utils.data.dataloader import DataLoader
 
 from houshou.data import CelebA, Market1501, VGGFace2
@@ -85,6 +89,13 @@ def main(experiment_path: str, batch_size: int, is_debug: bool, is_fullbody: boo
 
         print(f"Dataset Module: {dataset_name}")
 
+        visualise(
+            experiment_path,
+            dataset_name,
+            test_dataloader,
+            feature_model,
+            device)
+
         n_class_schedule = [10] + list(n_classes_scheduler(len(test_dataset.classes)))  # type: ignore
         for n_classes in n_class_schedule:
 
@@ -109,6 +120,44 @@ def main(experiment_path: str, batch_size: int, is_debug: bool, is_fullbody: boo
                 test_dataloader,
                 feature_model,
                 device)
+
+
+def visualise(
+        experiment_path: str,
+        dataset_name: str,
+        test_dataloader: DataLoader,
+        feature_model: torch.nn.Module,
+        device: torch.device,
+        perplexity=30):
+
+    results_dir = os.path.join(
+        experiment_path, "feature_tests", "visualisations", dataset_name
+    )
+    os.makedirs(results_dir, exist_ok=True)
+
+    embeddings_per_batch: List[np.ndarray] = []
+    attributes_per_batch: List[np.ndarray] = []
+    for x, (_, a) in tqdm.tqdm(test_dataloader, desc="Visualiser - Embeddings", dynamic_ncols=True):
+        x_ = feature_model(x.to(device))
+        embeddings_per_batch.append(x_.cpu().detach().numpy())
+        attributes_per_batch.append(a.cpu().detach().numpy())
+
+    all_embeddings = np.concatenate(embeddings_per_batch)
+    all_attributes = np.concatenate(attributes_per_batch)
+
+    tsne = TSNE(n_components=2, perplexity=perplexity, n_iter=5000, random_state=42, verbose=1)
+    reduced_embeddings = tsne.fit_transform(all_embeddings)
+
+    full_data = np.concatenate((reduced_embeddings, all_attributes), axis=1)
+
+    # Save numpy array.
+    np.save(os.path.join(results_dir, f"TSNE_p{perplexity}.npy"), reduced_embeddings)
+
+    # Save chart.
+    df = pd.DataFrame(data=full_data)
+    columns = [str(c) for c in df.columns.values.tolist()]
+    chart = sns.lmplot(data=df.rename(columns=lambda x: str(x)), x=columns[0], y=columns[1], hue=columns[2], markers=["x", "+"], fit_reg=False, scatter_kws={"s": 10}, legend=False, palette=["red", "blue"])
+    chart.savefig(os.path.join(results_dir, f"TSNE_p{perplexity}.png"))
 
 
 def backwards_compatible_load(
