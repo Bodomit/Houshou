@@ -3,6 +3,7 @@ from argparse import ArgumentParser
 from collections import OrderedDict
 from typing import Generator, Type, Union, get_args
 
+import pandas as pd
 import pytorch_lightning as pl
 import torch
 from torch.utils.data.dataloader import DataLoader
@@ -51,6 +52,7 @@ def main(experiment_path: str, trainer_type: str, batch_size: int, is_debug: boo
     feature_model = multitask_trainer.model.feature_model
     del multitask_trainer
     assert isinstance(feature_model, FeatureModel)
+    feature_model.eval()
     feature_model.freeze()
 
     # Construct the datamodules.
@@ -76,7 +78,8 @@ def main(experiment_path: str, trainer_type: str, batch_size: int, is_debug: boo
 
         print(f"Dataset Module: {dataset_name}")
 
-        for n_classes in n_classes_scheduler(len(test_dataset.classes)):  # type: ignore
+        n_class_schedule = [10] + list(n_classes_scheduler(len(test_dataset.classes)))  # type: ignore
+        for n_classes in n_class_schedule:
 
             print(f"N Classes: {n_classes}")
 
@@ -148,7 +151,10 @@ def reid_scenario(
     # Get the avg rank over all probes.
     avg_ranks = tester.reidentification(feature_model, device)
 
-    raise NotImplementedError
+    df = pd.DataFrame(avg_ranks, columns=["Cumulative Accuracy"], index=range(1, len(avg_ranks)+1))
+    df.index.name = "Rank"
+
+    df.to_csv(os.path.join(results_dir, "avg_ranks.csv"))
 
 
 def verification_scenario(
