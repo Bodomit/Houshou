@@ -18,14 +18,18 @@ class FeatureModel(pl.LightningModule):
             self.resnet = nn.Sequential(*(list(resnet.children())[:-1]), nn.Dropout(p=dropout_prob), nn.Flatten())
         else:
             self.resnet = InceptionResnetV1(
-                pretrained="vggface2" if use_pretrained else None, classify=False, num_classes=None, dropout_prob=dropout_prob
+                pretrained="vggface2" if use_pretrained else None,
+                classify=False,
+                num_classes=None,
+                dropout_prob=dropout_prob
             )
 
-            if use_extra_fc_layers:
-                self.extra_fc = nn.Sequential(nn.Linear(512, 512), nn.Linear(512, 512), nn.Linear(512, 512))
-                self.feature_model = nn.Sequential(self.resnet, self.extra_fc)
-            else:
-                self.feature_model = self.resnet
+        if use_extra_fc_layers:
+            self.extra_fc = nn.Sequential(
+                nn.Linear(512, 512), nn.Linear(512, 512), nn.Linear(512, 512))
+            self.feature_model = nn.Sequential(self.resnet, self.extra_fc)
+        else:
+            self.feature_model = self.resnet
 
     def forward(self, x):
         return self.feature_model(x)
