@@ -62,7 +62,7 @@ def main(experiment_path: str, trainer_type: str, batch_size: int, is_debug: boo
             CelebA(batch_size, ["Male"], buffer_size=None),
         ]
     # Get the device.
-    device = torch.device("cuda:3")
+    device = torch.device("cuda:0")
     feature_model.to(device)
 
     for test_module in datamodules:
