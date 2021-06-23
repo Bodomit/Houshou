@@ -1,4 +1,5 @@
 import itertools
+import os
 import warnings
 from collections import defaultdict
 from typing import Any, Dict, List, Optional, Set, Tuple
@@ -7,6 +8,7 @@ import numpy as np
 import pandas as pd
 import torch
 import tqdm
+from numpy.random import default_rng
 from sklearn import metrics
 from sklearn.model_selection import KFold
 from torch import nn
@@ -455,3 +457,192 @@ class BalancedAccuracy(Metric):
         use_mask = self.total > 0
         accuracy_per_class = self.correct[use_mask].float() / self.total[use_mask]
         return torch.sum(accuracy_per_class) / self.num_classes
+
+
+class ReidentificationTester:
+    def __init__(
+        self,
+        batch_size: int,
+        max_n_classes: Optional[int],
+        debug: bool,
+        seed: int,
+    ):
+        self.batch_size = batch_size
+        self.max_n_classes = max_n_classes
+        self.rnd = np.random.RandomState(seed)
+        self.debug = debug
+        self.seed = seed
+
+        self.num_workers = min(32, len(os.sched_getaffinity(0)))
+
+    def setup(self, dataloader: DataLoader):
+        samples, data_map = self._load_data(dataloader)
+        samples_per_label = self.get_samples_per_label(samples)
+
+        if self.max_n_classes is not None:
+            classes = sorted(samples_per_label)[: self.max_n_classes]
+            samples_per_label = {c: samples_per_label[c] for c in classes}
+
+        self.gallery, self.probe = self.split_gallery_probe(
+            samples_per_label, self.seed)
+
+        self.gallery_dataloader = self.subset_to_dataloader(self.gallery, data_map)
+        self.probe_dataloader = self.subset_to_dataloader(self.probe, data_map)
+
+    def reidentification(self, model: nn.Module, device: torch.device):
+        # Get the gallery features.
+        gallery_features = self.get_gallery_features(model, device)
+        avg_ranks = self.get_ranks(model, device, gallery_features)
+        return avg_ranks
+
+    def get_ranks(
+            self,
+            model: nn.Module,
+            device: torch.device,
+            gallery_features: torch.Tensor) -> np.ndarray:
+
+        gallery_labels = torch.tensor([s[1] for s in self.gallery]).to(device)
+        probe_labels = torch.tensor([s[1] for s in self.probe]).to(device)
+        n_probes = len(probe_labels)
+
+        sum_ranks_per_batch: List[torch.Tensor] = []
+
+        for ids, data in tqdm.tqdm(self.probe_dataloader, desc="Reid - Probe Batch", dynamic_ncols=True):
+            # Get the probe features and labels for the batch.
+            n_probe_labels_remaining = len(probe_labels)
+            probe_features_batch = self.get_feature_batch(model, device, data)
+            probe_labels_batch = probe_labels[:len(probe_features_batch)]
+            probe_labels = probe_labels[len(probe_features_batch)::]
+
+            assert len(ids) == len(data) == len(probe_labels_batch)
+            assert len(probe_labels) + len(probe_labels_batch) \
+                == n_probe_labels_remaining
+
+            # Get the distances.
+            gallery_grid = gallery_features.unsqueeze(dim=0)
+            gallery_grid = gallery_grid.expand([len(probe_labels_batch), -1, -1])
+
+            probe_batch_grid = probe_features_batch.unsqueeze(dim=1)
+            probe_batch_grid = probe_batch_grid.expand([-1, len(gallery_features), -1])
+
+            distances = gallery_grid - probe_batch_grid
+            distances = distances.square().sum(dim=2).sqrt()
+
+            # Get the correct label mask.
+            correct_label_mask = \
+                probe_labels_batch.unsqueeze(dim=1) == gallery_labels.unsqueeze(dim=0)
+
+            # Sort gallery by shortest distance per probe.
+            distance_sort_order = distances.argsort(dim=1)
+
+            # Rank per probe.
+            ranks_batch = torch.zeros_like(correct_label_mask)
+            for i in range(correct_label_mask.shape[0]):
+                ranks_batch[i, :] = correct_label_mask[i].index_select(0, distance_sort_order[i])
+
+            ranks_batch = ranks_batch.cumsum(dim=1)
+            sum_ranks_batch_over_probes = ranks_batch.sum(dim=0)
+            sum_ranks_per_batch.append(sum_ranks_batch_over_probes)
+
+        # Sum the ranks over all batches and return the average.
+        sum_ranks_all_batches = torch.stack(sum_ranks_per_batch, dim=0).sum(dim=0)
+        avg_ranks = sum_ranks_all_batches.float() / n_probes
+
+        return avg_ranks.cpu().detach().numpy()
+
+    @staticmethod
+    def _load_data(
+        dataloader: DataLoader,
+    ) -> Tuple[Set[AnnotatedSample], Dict[int, np.ndarray]]:
+
+        samples: Set[AnnotatedSample] = set()
+        data_map: Dict[int, np.ndarray] = {}
+
+        for db, (lb, ab) in dataloader:
+            for d, l, a in zip(db, lb, ab):
+                key = len(data_map)
+                data_map[key] = d
+                samples.add((key, int(l), int(a)))
+
+        return samples, data_map
+
+    @staticmethod
+    def get_samples_per_label(
+        data: Set[AnnotatedSample],
+    ) -> Dict[Label, Set[AnnotatedSample]]:
+        samples_per_label: Dict[Label, Set[AnnotatedSample]] = defaultdict(set)
+        for sample in data:
+            samples_per_label[sample[1]].add(sample)
+
+        return samples_per_label
+
+    @staticmethod
+    def split_gallery_probe(
+            samples_per_label: Dict[Label, Set[AnnotatedSample]],
+            seed: int) -> Tuple[List[AnnotatedSample], List[AnnotatedSample]]:
+        # Get n random numbers between 0 and 1000 for n labels
+        # to index the selected gallery image.
+        rng = default_rng(seed)
+        idxs = rng.integers(0, 1000, size=len(samples_per_label))
+
+        gallery: Set[AnnotatedSample] = set()
+        probe: Set[AnnotatedSample] = set()
+        for label, idx in zip(samples_per_label, idxs):
+            n_samples = len(samples_per_label[label])
+            sample = list(samples_per_label[label])[idx % n_samples]
+            gallery.add(sample)
+
+            other_samples = samples_per_label[label] - set([sample])
+            probe.update(other_samples)
+
+        gallery_list = list(sorted(gallery))
+        probe_list = list(sorted(probe))
+
+        return gallery_list, probe_list
+
+    def subset_to_dataloader(
+            self, subset: List[AnnotatedSample], data_map: Dict[int, np.ndarray]):
+        subset_sample_ids = [s[0] for s in subset]
+        subset_data_map = {k: data_map[k] for k in subset_sample_ids}
+        dataset = DataMapDataset(subset_data_map)
+        dataloader = DataLoader(
+            dataset, batch_size=self.batch_size, num_workers=self.num_workers
+        )
+
+        return dataloader
+
+    def get_gallery_features(
+            self,
+            model: nn.Module,
+            device: torch.device) -> torch.Tensor:
+        features_per_batch = []
+        ids_per_batch = []
+        for ids, data in self.gallery_dataloader:
+            features = self.get_feature_batch(model, device, data)
+            features_per_batch.append(features)
+            ids_per_batch.append(ids)
+
+        all_features = torch.cat(features_per_batch)
+        all_ids = torch.cat(ids_per_batch).int()
+
+        assert len(all_ids) == len(set(all_ids))
+        assert all_ids.tolist() == sorted(all_ids) == [s[0] for s in self.gallery]
+
+        return all_features
+
+    @staticmethod
+    def get_feature_batch(
+            model: nn.Module,
+            device: torch.device,
+            data: torch.Tensor):
+
+        outputs = model(data.to(device).squeeze())
+
+        if isinstance(outputs, torch.Tensor):
+            features = outputs
+        elif len(outputs) == 2:
+            _, features = outputs
+        else:
+            raise ValueError
+
+        return features
