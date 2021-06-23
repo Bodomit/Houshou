@@ -1,12 +1,13 @@
-import os
-import re
 import glob
+import os
 import pickle
+import re
 from functools import partial
-
-from typing import List, Tuple
+from typing import Dict, List, Tuple
 
 import pandas as pd
+from ruyaml import YAML
+
 from houshou.common import ROCCurve
 
 
@@ -47,6 +48,27 @@ def find_last_epoch_path(path: str) -> str:
     )
 
     return sorted_paths_with_epochs_steps[0][0]
+
+
+def load_experiment_config(path: str) -> Dict:
+    pattern = os.path.join(path, "**", "config.yaml")
+    paths = glob.glob(pattern, recursive=True)
+
+    if not paths:
+        raise ValueError
+
+    if len(paths) == 1:
+        config_path = paths[0]
+
+    paths = list(sorted(paths, reverse=True))
+    config_path = paths[0]
+
+    yaml = YAML(typ="safe")
+
+    with open(config_path, "r") as infile:
+        config = yaml.load(infile)
+
+    return config
 
 
 def save_cv_verification_results(
