@@ -164,6 +164,7 @@ def visualise(
     columns = [str(c) for c in df.columns.values.tolist()]
     chart = sns.lmplot(data=df.rename(columns=lambda x: str(x)), x=columns[0], y=columns[1], hue=columns[2], markers=["x", "+"], fit_reg=False, scatter_kws={"s": 10}, legend=False, palette=["red", "blue"])
     chart.savefig(os.path.join(results_dir, f"TSNE_p{perplexity}.png"))
+    chart.savefig(os.path.join(results_dir, f"TSNE_p{perplexity}.svg"))
 
 
 def backwards_compatible_load(
