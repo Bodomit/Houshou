@@ -4,6 +4,7 @@ from collections import OrderedDict
 from typing import Generator, List, Type, Union, get_args
 
 import numpy as np
+from numpy.random import default_rng
 import pandas as pd
 import pytorch_lightning as pl
 import seaborn as sns
