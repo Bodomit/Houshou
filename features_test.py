@@ -4,12 +4,12 @@ from collections import OrderedDict
 from typing import Generator, List, Type, Union, get_args
 
 import numpy as np
-from numpy.random import default_rng
 import pandas as pd
 import pytorch_lightning as pl
 import seaborn as sns
 import torch
 import tqdm
+from numpy.random import default_rng
 from sklearn.manifold import TSNE
 from torch.utils.data.dataloader import DataLoader
 
@@ -19,9 +19,8 @@ from houshou.data.market_1501 import Market1501Dataset
 from houshou.data.vggface2 import VGGFace2Dataset
 from houshou.metrics import CVThresholdingVerifier, ReidentificationTester
 from houshou.models import FeatureModel
-from houshou.systems import (Alvi2019, MultitaskTrainer,
-                             TwoStageMultitaskTrainer)
-from houshou.utils import (find_last_epoch_path, load_experiment_config,
+from houshou.systems import MultitaskTrainer
+from houshou.utils import (find_last_epoch_path, get_model_class_from_config,
                            save_cv_verification_results)
 
 pl.seed_everything(42, workers=True)
@@ -31,21 +30,7 @@ HOUSHOU_DATASET = Union[VGGFace2Dataset, CelebADataset, Market1501Dataset]
 
 def main(experiment_path: str, batch_size: int, is_debug: bool, is_fullbody: bool):
 
-    try:
-        config = load_experiment_config(experiment_path)
-        trainer_class_path = config["model"]["class_path"]
-    except KeyError:
-        trainer_class_path = "houshou.systems.TwoStageMultitaskTrainer"
-
-    if trainer_class_path == "houshou.systems.Alvi2019":
-        trainer_class = Alvi2019
-    elif trainer_class_path == "houshou.systems.MultitaskTrainer":
-        trainer_class = MultitaskTrainer
-    elif trainer_class_path == "houshou.systems.TwoStageMultitaskTrainer":
-        trainer_class = TwoStageMultitaskTrainer
-    else:
-        raise ValueError
-
+    trainer_class = get_model_class_from_config(experiment_path)
     feature_model_checkpoint_path = find_last_epoch_path(experiment_path)
 
     print("Experiment Directory: ", experiment_path)
@@ -61,7 +46,7 @@ def main(experiment_path: str, batch_size: int, is_debug: bool, is_fullbody: boo
             feature_model_checkpoint_path, trainer_class)
 
     assert isinstance(multitask_trainer, trainer_class)
-    feature_model = multitask_trainer.model.feature_model
+    feature_model = multitask_trainer.model.feature_model  # type: ignore
     del multitask_trainer
     assert isinstance(feature_model, FeatureModel)
     feature_model.eval()
@@ -140,6 +125,10 @@ def visualise(
     attributes_per_batch: List[np.ndarray] = []
     for x, (_, a) in tqdm.tqdm(test_dataloader, desc="Visualiser - Embeddings", dynamic_ncols=True):
         x_ = feature_model(x.to(device))
+
+        if isinstance(x_, tuple):
+            x_ = x_[1]
+
         embeddings_per_batch.append(x_.cpu().detach().numpy())
         attributes_per_batch.append(a.cpu().detach().numpy())
 

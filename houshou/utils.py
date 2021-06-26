@@ -3,12 +3,15 @@ import os
 import pickle
 import re
 from functools import partial
-from typing import Dict, List, Tuple
+from typing import Dict, List, Tuple, Type
 
 import pandas as pd
+import pytorch_lightning as pl
 from ruyaml import YAML
 
 from houshou.common import ROCCurve
+from houshou.systems import (Alvi2019, MultitaskTrainer,
+                             TwoStageMultitaskTrainer)
 
 
 def parse_root_results_directory_argument(args: List[str]):
@@ -69,6 +72,25 @@ def load_experiment_config(path: str) -> Dict:
         config = yaml.load(infile)
 
     return config
+
+
+def get_model_class_from_config(path: str) -> Type[MultitaskTrainer]:
+    try:
+        config = load_experiment_config(path)
+        trainer_class_path = config["model"]["class_path"]
+    except KeyError:
+        trainer_class_path = "houshou.systems.TwoStageMultitaskTrainer"
+
+    if trainer_class_path == "houshou.systems.Alvi2019":
+        trainer_class = Alvi2019
+    elif trainer_class_path == "houshou.systems.MultitaskTrainer":
+        trainer_class = MultitaskTrainer
+    elif trainer_class_path == "houshou.systems.TwoStageMultitaskTrainer":
+        trainer_class = TwoStageMultitaskTrainer
+    else:
+        raise ValueError
+
+    return trainer_class
 
 
 def save_cv_verification_results(
