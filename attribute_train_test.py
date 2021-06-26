@@ -8,7 +8,7 @@ from ruyaml import YAML
 from houshou.data import CelebA, Market1501, VGGFace2
 from houshou.models import FeatureModel
 from houshou.systems import AttributeExtractionTask, TwoStageMultitaskTrainer
-from houshou.utils import find_last_epoch_path
+from houshou.utils import find_last_epoch_path, get_model_class_from_config
 
 pl.seed_everything(42, workers=True)
 
@@ -16,17 +16,18 @@ pl.seed_everything(42, workers=True)
 def main(
     experiment_path: str, batch_size: int, is_fast_dev_run: bool, is_fullbody: bool
 ):
-    # Get the path to the last checkpoint.
+    # Get model class form config and path to the last checkpoint.
+    trainer_class = get_model_class_from_config(experiment_path)
     feature_model_checkpoint_path = find_last_epoch_path(experiment_path)
 
     print("Experiment Directory: ", experiment_path)
     print("Checkpoint Path; ", feature_model_checkpoint_path)
 
     # Load the multitask model and get the featrue model.
-    multitask_trainer = TwoStageMultitaskTrainer.load_from_checkpoint(
+    multitask_trainer = trainer_class.load_from_checkpoint(
         feature_model_checkpoint_path, verifier_args=None
     )
-    assert isinstance(multitask_trainer, TwoStageMultitaskTrainer)
+    assert isinstance(multitask_trainer, trainer_class)
     feature_model = multitask_trainer.model.feature_model
     del multitask_trainer
     assert isinstance(feature_model, FeatureModel)
