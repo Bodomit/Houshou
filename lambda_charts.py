@@ -359,9 +359,9 @@ def aggregate_reid_metrics(
     df.index.name = "lambda"
 
     # Save the full metrics.
-    os.makedirs(os.path.join(output_directory, test_set), exist_ok=True)
+    os.makedirs(os.path.join(output_directory, test_set, "reid"), exist_ok=True)
     df.to_csv(
-        os.path.join(output_directory, test_set, f"reid_{n_classes}.csv")
+        os.path.join(output_directory, test_set, "reid", f"reid_{n_classes}.csv")
     )
 
 def aggregate_verification_metrics(
