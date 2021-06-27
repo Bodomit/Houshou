@@ -16,7 +16,7 @@ from sklearn.metrics import auc
 
 TEST_SUBSETS = {
     "faces": ["vggface2_MTCNN", "CelebA_MTCNN"],
-    "fullbody": ["Market-1501"],
+    "fullbody": ["Market-1501", "RAP2"],
 }
 
 METRICS_COLUMN_NAME_MAP = {
@@ -65,7 +65,7 @@ def main(
     else:
         test_datasets = TEST_SUBSETS["faces"]
 
-    aggregate_verification_tests(
+    aggregate_feature_tests(
         input_directory,
         lambda_values,
         output_directory,
@@ -210,6 +210,7 @@ def get_attribute_specific_metric_keys(input_directory: str, test_set: str):
         input_directory,
         "*",
         "feature_tests",
+        "verification",
         test_set,
         "*",
         "roc_curves*.pickle",
@@ -227,7 +228,7 @@ def get_attribute_specific_metric_keys(input_directory: str, test_set: str):
     return n_classes, keys
 
 
-def aggregate_verification_tests(
+def aggregate_feature_tests(
     input_directory: str,
     lambda_values: List[str],
     output_directory: str,
@@ -235,7 +236,7 @@ def aggregate_verification_tests(
     skip_verification_metrics: bool,
     test_datasets: List[str],
 ):
-    verification_test_output = os.path.join(output_directory, "feature_tests")
+    verification_test_output = os.path.join(output_directory, "feature_tests", "verification")
     os.makedirs(verification_test_output, exist_ok=True)
 
     for test_set in test_datasets:
@@ -247,6 +248,13 @@ def aggregate_verification_tests(
 
             print("Test Set: ", test_set)
             print("N Classes: ", n_class)
+
+            aggregate_reid_metrics(
+                    input_directory,
+                    test_set,
+                    lambda_values,
+                    output_directory,
+                    n_class)
 
             for key in keys:
                 if not skip_verification_metrics:
@@ -310,6 +318,52 @@ def plot_aucs_per_lambda_vs_n_classes(
     plt.close()
 
 
+def aggregate_reid_metrics(
+    input_directory: str,
+    test_set: str,
+    lambda_values: List[str],
+    output_directory: str,
+    n_classes: str
+):
+    # Get the metrics for each lambda.
+    metrics_for_lambda: Dict[str, pd.Series] = {}
+    for lambda_value in tqdm.tqdm(
+        sorted(lambda_values),
+        desc=f"Loading Reid Metrics",
+        ascii=True,
+        dynamic_ncols=True,
+    ):
+        metric_path = os.path.join(
+            input_directory,
+            str(lambda_value),
+            "feature_tests",
+            "reid",
+            test_set,
+            n_classes,
+            f"avg_ranks.csv",
+        )
+
+        try:
+            lambda_metrics = read_metrics(metric_path)["Cumulative Accuracy"]
+            lambda_metrics = lambda_metrics.rename(float(lambda_value))
+            metrics_for_lambda[lambda_value] = lambda_metrics
+        except FileNotFoundError:
+            continue
+
+    # Combine the metrics together.
+    sorted_lambdas = sort_lambdas(lambda_values)
+    df_rows: List[pd.Series] = []
+    for lambda_value in sorted_lambdas:
+        df_rows.append(metrics_for_lambda[lambda_value])
+    df = pd.concat(df_rows, axis=1).T
+    df.index.name = "lambda"
+
+    # Save the full metrics.
+    os.makedirs(os.path.join(output_directory, test_set), exist_ok=True)
+    df.to_csv(
+        os.path.join(output_directory, test_set, f"reid_{n_classes}.csv")
+    )
+
 def aggregate_verification_metrics(
     input_directory: str,
     test_set: str,
@@ -330,10 +384,12 @@ def aggregate_verification_metrics(
             input_directory,
             str(lambda_value),
             "feature_tests",
+            "verification",
             test_set,
             n_classes,
             f"verification{key}.csv",
         )
+
         split_metrics = read_metrics(metric_path)
         mean_metrics = get_mean_metrics(split_metrics)
         mean_metrics = mean_metrics.rename(float(lambda_value))
@@ -416,6 +472,7 @@ def plot_verification_curve(
             input_directory,
             str(lambda_value),
             "feature_tests",
+            "verification",
             test_set,
             n_class,
             f"roc_curves{key}.pickle",
