@@ -4,7 +4,7 @@ from typing import Tuple
 
 import pytest
 import torch
-from houshou.data import CelebA, Market1501, VGGFace2
+from houshou.data import RAP2, CelebA, Market1501, VGGFace2
 from houshou.data.samplers import TripletBatchRandomSampler
 from PIL.Image import Image
 from torch.utils.data import DataLoader
@@ -214,8 +214,8 @@ class Market1501Tests(unittest.TestCase):
         self.batch_size = 2
         self.dataset_module = Market1501(
             self.batch_size,
-            1000,
             ["gender", "backpack"],
+            1000,
             self.data_dir,
         )
         self.dataset_module.setup(None)
@@ -224,6 +224,64 @@ class Market1501Tests(unittest.TestCase):
         assert self.dataset_module.test
         assert len(self.dataset_module.test) == 13115
         assert len(self.dataset_module.query) == 3368
+
+        for image, target in self.dataset_module.test:
+            assert image is not None
+            assert isinstance(image, torch.Tensor)
+            assert len(target) == 2
+            assert isinstance(target[0], torch.Tensor)
+            assert isinstance(target[1], torch.Tensor)
+            assert isinstance(target[0].item(), int)
+            assert target[1].dtype == torch.int64
+            assert len(target[1]) == 2 and len(target[1].shape) == 1
+            break
+
+    def test_load_train_val(self):
+
+        train_classes = set(self.dataset_module.train.identities)  # type: ignore
+        valid_classes = set(self.dataset_module.valid.identities)  # type: ignore
+
+        assert set.intersection(train_classes, valid_classes) == set([])
+
+        for image, target in self.dataset_module.train:
+            assert image is not None
+            assert isinstance(image, torch.Tensor)
+            assert len(target) == 2
+            assert isinstance(target[0], torch.Tensor)
+            assert isinstance(target[1], torch.Tensor)
+            assert isinstance(target[0].item(), int)
+            assert target[1].dtype == torch.int64
+            assert len(target[1]) == 2 and len(target[1].shape) == 1
+            break
+
+        for image, target in self.dataset_module.valid:
+            assert image is not None
+            assert isinstance(image, torch.Tensor)
+            assert len(target) == 2
+            assert isinstance(target[0], torch.Tensor)
+            assert isinstance(target[1], torch.Tensor)
+            assert isinstance(target[0].item(), int)
+            assert target[1].dtype == torch.int64
+            assert len(target[1]) == 2 and len(target[1].shape) == 1
+            break
+
+
+class RAP2Tests(unittest.TestCase):
+    def setUp(self):
+        self.root = get_root_dir()
+        self.data_dir = os.path.join(self.root, "RAP2")
+        self.batch_size = 2
+        self.dataset_module = RAP2(
+            self.batch_size,
+            ["Male", "attachment-Backpack"],
+            1000,
+            self.data_dir,
+        )
+        self.dataset_module.setup(None)
+
+    def test_load_test(self):
+        assert self.dataset_module.test
+        assert len(self.dataset_module.test) == 5378
 
         for image, target in self.dataset_module.test:
             assert image is not None

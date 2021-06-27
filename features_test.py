@@ -16,6 +16,7 @@ from torch.utils.data.dataloader import DataLoader
 from houshou.data import CelebA, Market1501, VGGFace2
 from houshou.data.celeba import CelebADataset
 from houshou.data.market_1501 import Market1501Dataset
+from houshou.data.rap2 import RAP2
 from houshou.data.vggface2 import VGGFace2Dataset
 from houshou.metrics import CVThresholdingVerifier, ReidentificationTester
 from houshou.models import FeatureModel
@@ -54,7 +55,10 @@ def main(experiment_path: str, batch_size: int, is_debug: bool, is_fullbody: boo
 
     # Construct the datamodules.
     if is_fullbody:
-        datamodules = [Market1501(batch_size, ["gender"], buffer_size=None)]
+        datamodules = [
+            Market1501(batch_size, ["gender"], buffer_size=None),
+            RAP2(batch_size, ["Male"], buffer_size=None)
+        ]
     else:
         datamodules = [
             VGGFace2(batch_size, ["Male"], buffer_size=None),

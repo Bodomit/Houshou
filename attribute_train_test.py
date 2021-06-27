@@ -6,6 +6,7 @@ from pytorch_lightning.loggers import CSVLogger, TensorBoardLogger
 from ruyaml import YAML
 
 from houshou.data import CelebA, Market1501, VGGFace2
+from houshou.data.rap2 import RAP2
 from houshou.models import FeatureModel
 from houshou.systems import AttributeExtractionTask, TwoStageMultitaskTrainer
 from houshou.utils import find_last_epoch_path, get_model_class_from_config
@@ -35,7 +36,10 @@ def main(
 
     # Construct the datamodules.
     if is_fullbody:
-        datamodules = [Market1501(batch_size, ["gender"], buffer_size=None)]
+        datamodules = [
+            Market1501(batch_size, ["gender"], buffer_size=None),
+            RAP2(batch_size, ["Male"], buffer_size=None)
+        ]
     else:
         datamodules = [
             VGGFace2(batch_size, ["Male"], buffer_size=None),
