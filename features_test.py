@@ -1,6 +1,7 @@
 import os
 from argparse import ArgumentParser
 from collections import OrderedDict
+from functools import reduce
 from typing import Generator, List, Type, Union, get_args
 
 import numpy as np
@@ -9,8 +10,12 @@ import pytorch_lightning as pl
 import seaborn as sns
 import torch
 import tqdm
+from matplotlib import pyplot as plt
 from numpy.random import default_rng
+from sklearn.cluster import KMeans
+from sklearn.decomposition import PCA
 from sklearn.manifold import TSNE
+from sklearn.preprocessing import StandardScaler
 from torch.utils.data.dataloader import DataLoader
 
 from houshou.data import CelebA, Market1501, VGGFace2
@@ -25,6 +30,7 @@ from houshou.utils import (find_last_epoch_path, get_model_class_from_config,
                            save_cv_verification_results)
 
 pl.seed_everything(42, workers=True)
+
 
 HOUSHOU_DATASET = Union[VGGFace2Dataset, CelebADataset, Market1501Dataset]
 
@@ -61,8 +67,8 @@ def main(experiment_path: str, batch_size: int, is_debug: bool, is_fullbody: boo
         ]
     else:
         datamodules = [
-            VGGFace2(batch_size, ["Male"], buffer_size=None),
             CelebA(batch_size, ["Male"], buffer_size=None),
+            VGGFace2(batch_size, ["Male"], buffer_size=None),
         ]
     # Get the device.
     device = torch.device("cuda:0")
@@ -78,6 +84,15 @@ def main(experiment_path: str, batch_size: int, is_debug: bool, is_fullbody: boo
         dataset_name = os.path.basename(test_module.data_dir)
 
         print(f"Dataset Module: {dataset_name}")
+
+        cluster(
+            experiment_path,
+            dataset_name,
+            test_dataloader,
+            feature_model,
+            device)
+
+        continue
 
         visualise(
             experiment_path,
@@ -110,6 +125,82 @@ def main(experiment_path: str, batch_size: int, is_debug: bool, is_fullbody: boo
                 test_dataloader,
                 feature_model,
                 device)
+
+
+def cluster(
+        experiment_path: str,
+        dataset_name: str,
+        test_dataloader: DataLoader,
+        feature_model: torch.nn.Module,
+        device: torch.device,
+        perplexity=30):
+
+    results_dir = os.path.join(
+        experiment_path, "feature_tests", "clustering", dataset_name
+    )
+    os.makedirs(results_dir, exist_ok=True)
+
+    embeddings_per_batch: List[np.ndarray] = []
+    attributes_per_batch: List[np.ndarray] = []
+    for x, (_, a) in tqdm.tqdm(test_dataloader, desc="Clustering - Embeddings", dynamic_ncols=True):
+        x_ = feature_model(x.to(device))
+
+        if isinstance(x_, tuple):
+            x_ = x_[1]
+
+        embeddings_per_batch.append(x_.cpu().detach().numpy())
+        attributes_per_batch.append(a.cpu().detach().numpy())
+
+    all_embeddings = np.concatenate(embeddings_per_batch)
+    all_attributes = np.concatenate(attributes_per_batch).squeeze()
+
+    if len(all_embeddings) > 10000:
+        rng = default_rng()
+        idxs = rng.integers(0, len(all_embeddings), size=10000)
+        all_embeddings = all_embeddings[idxs]
+        all_attributes = all_attributes[idxs]
+
+    reduced_data = TSNE(n_components=2, perplexity=perplexity, n_iter=5000, random_state=42, verbose=1).fit_transform(all_embeddings)
+    scaled_data = StandardScaler().fit_transform(reduced_data)
+
+    model = KMeans(init="k-means++", n_clusters=2)
+    cluster_labels = model.fit_predict(scaled_data)
+
+    full_data = pd.DataFrame.from_dict({"cluster_id": cluster_labels, "true_attribute": all_attributes})
+    full_data.to_csv(os.path.join(results_dir, "raw_data.csv"))
+
+    # Visualise
+    # Step size of the mesh. Decrease to increase the quality of the VQ.
+    h = .02
+
+    # Plot the decision boundary. For that, we will assign a color to each
+    x_min, x_max = scaled_data[:, 0].min() - 1, scaled_data[:, 0].max() + 1
+    y_min, y_max = scaled_data[:, 1].min() - 1, scaled_data[:, 1].max() + 1
+    xx, yy = np.meshgrid(np.arange(x_min, x_max, h), np.arange(y_min, y_max, h))
+
+    # Obtain labels for each point in mesh. Use last trained model.
+    Z = model.predict(np.c_[xx.ravel().astype(np.float32), yy.ravel().astype(np.float32)])
+
+    # Put the result into a color plot and plot the mesh.
+    Z = Z.reshape(xx.shape)
+    fig, ax = plt.subplots()
+    ax.imshow(Z, interpolation="nearest", extent=(xx.min(), xx.max(), yy.min(), yy.max()), cmap=plt.cm.Paired, aspect="auto", origin="lower")
+
+    # Plot Male sample.
+    male_mask = full_data["true_attribute"] == 1
+    ax.plot(scaled_data[male_mask][:, 0], scaled_data[male_mask][:, 1], 'k.', markersize=2, c="blue")
+
+    # Plot female.
+    ax.plot(scaled_data[male_mask == False][:, 0], scaled_data[male_mask == False][:, 1], 'k.', markersize=2, c="red")
+
+    # Plot the centroids.
+    centroids = model.cluster_centers_
+    plt.scatter(centroids[:, 0], centroids[:, 1], marker="x", s=169, linewidths=3,
+                color="w", zorder=10)
+
+    # Save chart
+    fig.savefig(os.path.join(results_dir, f"chart.png"))
+    fig.savefig(os.path.join(results_dir, f"chart.eps"))
 
 
 def visualise(
