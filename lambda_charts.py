@@ -130,7 +130,7 @@ def plot_relative_losses(
     axs.set_title("Relative Loss vs Epoch")
 
     fig.set_tight_layout(True)
-    fig.savefig(os.path.join(output_directory, "relative_losses.svg"))
+    fig.savefig(os.path.join(output_directory, "relative_losses.eps"))
     fig.savefig(os.path.join(output_directory, "relative_losses.png"))
 
 
@@ -313,7 +313,7 @@ def plot_aucs_per_lambda_vs_n_classes(
         f"ROC-AUC vs Number of Classes in Verification Scenario. Test Set: {test_set}"
     )
 
-    fig.savefig(output_path + ".svg")
+    fig.savefig(output_path + ".eps")
     fig.savefig(output_path + ".png")
     plt.close()
 
@@ -359,9 +359,9 @@ def aggregate_reid_metrics(
     df.index.name = "lambda"
 
     # Save the full metrics.
-    os.makedirs(os.path.join(output_directory, test_set, "reid"), exist_ok=True)
+    os.makedirs(os.path.join(output_directory, "feature_tests", "reid", test_set), exist_ok=True)
     df.to_csv(
-        os.path.join(output_directory, test_set, "reid", f"reid_{n_classes}.csv")
+        os.path.join(output_directory, "feature_tests", "reid", test_set, f"reid_{n_classes}.csv")
     )
 
 def aggregate_verification_metrics(
@@ -482,7 +482,7 @@ def plot_verification_curve(
         roc_for_lambda[lambda_value] = mean_roc
 
     # Plot the figure.
-    plt.figure(figsize=(10, 8))
+    plt.figure(figsize=(8, 7))
     lw = 2
 
     aucs_for_lambda: Dict[str, float] = {}
@@ -492,9 +492,9 @@ def plot_verification_curve(
         plt.plot(fpr, tpr, lw=lw, alpha=1.0, label=label)
         aucs_for_lambda[lambda_value] = auc
 
-    title = f"Receiver Operating Characteristic (ROC) - Test Set: {test_set} N Classes: {n_class}"
+    title = f"ROC Curves per $\\lambda$"
 
-    if key != "":
+    if key != "" and key != "_all":
         key_name = str.join(", ", key[1:].split("_"))
         title += f", Attribute Pair: ({key_name})"
 
@@ -510,7 +510,7 @@ def plot_verification_curve(
 
     os.makedirs(output_directory, exist_ok=True)
     plt.savefig(
-        os.path.join(output_directory, test_set, f"roc_curves_{n_class}{key}.svg")
+        os.path.join(output_directory, test_set, f"roc_curves_{n_class}{key}.eps")
     )
     plt.savefig(
         os.path.join(output_directory, test_set, f"roc_curves_{n_class}{key}.png")
