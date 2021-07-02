@@ -9,8 +9,15 @@ import pytorch_lightning as pl
 import seaborn as sns
 import torch
 import tqdm
+from matplotlib import pyplot as plt
+from matplotlib.colors import ListedColormap
 from numpy.random import default_rng
+from ruyaml import YAML
 from sklearn.manifold import TSNE
+from sklearn.metrics import (accuracy_score, balanced_accuracy_score, f1_score,
+                             precision_score, recall_score)
+from sklearn.mixture import GaussianMixture
+from sklearn.preprocessing import StandardScaler
 from torch.utils.data.dataloader import DataLoader
 
 from houshou.data import CelebA, Market1501, VGGFace2
@@ -26,10 +33,11 @@ from houshou.utils import (find_last_epoch_path, get_model_class_from_config,
 
 pl.seed_everything(42, workers=True)
 
+
 HOUSHOU_DATASET = Union[VGGFace2Dataset, CelebADataset, Market1501Dataset]
 
 
-def main(experiment_path: str, batch_size: int, is_debug: bool, is_fullbody: bool):
+def main(experiment_path: str, batch_size: int, is_debug: bool, is_fullbody: bool, cluster_only: bool):
 
     trainer_class = get_model_class_from_config(experiment_path)
     feature_model_checkpoint_path = find_last_epoch_path(experiment_path)
@@ -61,8 +69,8 @@ def main(experiment_path: str, batch_size: int, is_debug: bool, is_fullbody: boo
         ]
     else:
         datamodules = [
-            VGGFace2(batch_size, ["Male"], buffer_size=None),
             CelebA(batch_size, ["Male"], buffer_size=None),
+            VGGFace2(batch_size, ["Male"], buffer_size=None),
         ]
     # Get the device.
     device = torch.device("cuda:0")
@@ -78,6 +86,16 @@ def main(experiment_path: str, batch_size: int, is_debug: bool, is_fullbody: boo
         dataset_name = os.path.basename(test_module.data_dir)
 
         print(f"Dataset Module: {dataset_name}")
+
+        cluster(
+            experiment_path,
+            dataset_name,
+            test_dataloader,
+            feature_model,
+            device)
+
+        if cluster_only:
+            continue
 
         visualise(
             experiment_path,
@@ -112,6 +130,111 @@ def main(experiment_path: str, batch_size: int, is_debug: bool, is_fullbody: boo
                 device)
 
 
+def cluster(
+        experiment_path: str,
+        dataset_name: str,
+        test_dataloader: DataLoader,
+        feature_model: torch.nn.Module,
+        device: torch.device,
+        perplexity=50):
+
+    results_dir = os.path.join(
+        experiment_path, "feature_tests", "clustering", dataset_name
+    )
+    os.makedirs(results_dir, exist_ok=True)
+
+    embeddings_per_batch: List[np.ndarray] = []
+    attributes_per_batch: List[np.ndarray] = []
+    for x, (_, a) in tqdm.tqdm(test_dataloader, desc="Clustering - Embeddings", dynamic_ncols=True):
+        x_ = feature_model(x.to(device))
+
+        if isinstance(x_, tuple):
+            x_ = x_[1]
+
+        embeddings_per_batch.append(x_.cpu().detach().numpy())
+        attributes_per_batch.append(a.cpu().detach().numpy())
+
+    all_embeddings = np.concatenate(embeddings_per_batch)
+    all_attributes = np.concatenate(attributes_per_batch).squeeze()
+
+    if len(all_embeddings) > 10000:
+        rng = default_rng()
+        idxs = rng.integers(0, len(all_embeddings), size=10000)
+        all_embeddings = all_embeddings[idxs]
+        all_attributes = all_attributes[idxs]
+
+    reduced_data = TSNE(n_components=2, perplexity=perplexity, n_iter=5000, random_state=42, verbose=1).fit_transform(all_embeddings)
+    scaled_data = StandardScaler().fit_transform(reduced_data)
+
+    model = GaussianMixture(n_components=2)
+    cluster_labels = model.fit_predict(scaled_data)
+
+    full_data = pd.DataFrame.from_dict({"cluster_id": cluster_labels, "true_attribute": all_attributes})
+    full_data.to_csv(os.path.join(results_dir, "raw_data.csv"))
+
+    # Visualise
+    # Step size of the mesh. Decrease to increase the quality of the VQ.
+    h = .02
+
+    # Plot the decision boundary. For that, we will assign a color to each
+    x_min, x_max = scaled_data[:, 0].min() - 1, scaled_data[:, 0].max() + 1
+    y_min, y_max = scaled_data[:, 1].min() - 1, scaled_data[:, 1].max() + 1
+    xx, yy = np.meshgrid(np.arange(x_min, x_max, h), np.arange(y_min, y_max, h))
+
+    # Obtain labels for each point in mesh. Use last trained model.
+    Z = model.predict(np.c_[xx.ravel().astype(np.float32), yy.ravel().astype(np.float32)])
+
+    # Put the result into a color plot and plot the mesh.
+    Z = Z.reshape(xx.shape)
+    fig, ax = plt.subplots()
+    colourmap = ListedColormap(["plum", "palegreen"])
+    ax.imshow(Z, interpolation="nearest", extent=(xx.min(), xx.max(), yy.min(), yy.max()), cmap=colourmap, aspect="auto", origin="lower")
+
+    # Plot Male sample.
+    male_mask = full_data["true_attribute"] == 1
+    ax.plot(scaled_data[male_mask][:, 0], scaled_data[male_mask][:, 1], 'x', markersize=2, c="blue", label="Male")
+
+    # Plot female.
+    ax.plot(scaled_data[male_mask == False][:, 0], scaled_data[male_mask == False][:, 1], '+', markersize=2, c="red", label="Female")
+
+    # Add the legend.
+    ax.legend()
+
+    # Plot the centroids.
+    # centroids = model.cluster_centers_
+    # plt.scatter(centroids[:, 0], centroids[:, 1], marker="x", s=169, linewidths=3,
+    #             color="w", zorder=10)
+
+    # Save chart
+    fig.savefig(os.path.join(results_dir, f"chart.png"))
+    fig.savefig(os.path.join(results_dir, f"chart.eps"))
+
+    def calc_metrics(cluster_ids: pd.Series, real_attribute_labels: pd.Series):
+        metrics = {
+            "accuracy": accuracy_score(real_attribute_labels, cluster_ids),
+            "balanced_accuracy": balanced_accuracy_score(real_attribute_labels, cluster_ids),
+            "precision": precision_score(real_attribute_labels, cluster_ids),
+            "recall": recall_score(real_attribute_labels, cluster_ids),
+            "f1": f1_score(real_attribute_labels, cluster_ids)
+        }
+
+        metrics = {m: float(metrics[m]) for m in metrics}
+
+        return metrics
+
+    cluster_0_is_att_0_metrics = calc_metrics(full_data["cluster_id"], full_data["true_attribute"])
+
+    opposite_cluster_ids = (full_data["cluster_id"] == False).astype(int)
+    cluster_1_is_att_0_metrics = calc_metrics(opposite_cluster_ids, full_data["true_attribute"])
+
+    yaml = YAML(typ="safe")
+    with open(os.path.join(results_dir, "cluster_0_is_att_0.yaml"), "w") as outfile:
+        yaml.dump(cluster_0_is_att_0_metrics, outfile)
+
+    with open(os.path.join(results_dir, "cluster_1_is_att_0.yaml"), "w") as outfile:
+        yaml.dump(cluster_1_is_att_0_metrics, outfile)
+
+
 def visualise(
         experiment_path: str,
         dataset_name: str,
@@ -144,7 +267,7 @@ def visualise(
         idxs = rng.integers(0, len(all_attributes), size=10000)
         all_embeddings = all_embeddings[idxs]
         all_attributes = all_attributes[idxs]
- 
+
     tsne = TSNE(n_components=2, perplexity=perplexity, n_iter=5000, random_state=42, verbose=1)
     reduced_embeddings = tsne.fit_transform(all_embeddings)
 
@@ -286,5 +409,6 @@ if __name__ == "__main__":
     parser.add_argument("--batch-size", type=int, default=512)
     parser.add_argument("--debug", action="store_true")
     parser.add_argument("--fullbody", action="store_true")
+    parser.add_argument("--cluster-only", action="store_true")
     args = parser.parse_args()
-    main(args.experiment_path, args.batch_size, args.debug, args.fullbody)
+    main(args.experiment_path, args.batch_size, args.debug, args.fullbody, args.cluster_only)
