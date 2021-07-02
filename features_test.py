@@ -1,7 +1,6 @@
 import os
 from argparse import ArgumentParser
 from collections import OrderedDict
-from functools import reduce
 from typing import Generator, List, Type, Union, get_args
 
 import numpy as np
@@ -11,10 +10,13 @@ import seaborn as sns
 import torch
 import tqdm
 from matplotlib import pyplot as plt
+from matplotlib.colors import ListedColormap
 from numpy.random import default_rng
-from sklearn.cluster import KMeans
-from sklearn.decomposition import PCA
+from ruyaml import YAML
 from sklearn.manifold import TSNE
+from sklearn.metrics import (accuracy_score, balanced_accuracy_score, f1_score,
+                             precision_score, recall_score)
+from sklearn.mixture import GaussianMixture
 from sklearn.preprocessing import StandardScaler
 from torch.utils.data.dataloader import DataLoader
 
@@ -133,7 +135,7 @@ def cluster(
         test_dataloader: DataLoader,
         feature_model: torch.nn.Module,
         device: torch.device,
-        perplexity=30):
+        perplexity=50):
 
     results_dir = os.path.join(
         experiment_path, "feature_tests", "clustering", dataset_name
@@ -163,7 +165,7 @@ def cluster(
     reduced_data = TSNE(n_components=2, perplexity=perplexity, n_iter=5000, random_state=42, verbose=1).fit_transform(all_embeddings)
     scaled_data = StandardScaler().fit_transform(reduced_data)
 
-    model = KMeans(init="k-means++", n_clusters=2)
+    model = GaussianMixture(n_components=2)
     cluster_labels = model.fit_predict(scaled_data)
 
     full_data = pd.DataFrame.from_dict({"cluster_id": cluster_labels, "true_attribute": all_attributes})
@@ -184,23 +186,49 @@ def cluster(
     # Put the result into a color plot and plot the mesh.
     Z = Z.reshape(xx.shape)
     fig, ax = plt.subplots()
-    ax.imshow(Z, interpolation="nearest", extent=(xx.min(), xx.max(), yy.min(), yy.max()), cmap=plt.cm.Paired, aspect="auto", origin="lower")
+    colourmap = ListedColormap(["plum", "palegreen"])
+    ax.imshow(Z, interpolation="nearest", extent=(xx.min(), xx.max(), yy.min(), yy.max()), cmap=colourmap, aspect="auto", origin="lower")
 
     # Plot Male sample.
     male_mask = full_data["true_attribute"] == 1
-    ax.plot(scaled_data[male_mask][:, 0], scaled_data[male_mask][:, 1], 'k.', markersize=2, c="blue")
+    ax.plot(scaled_data[male_mask][:, 0], scaled_data[male_mask][:, 1], 'x', markersize=2, c="blue")
 
     # Plot female.
-    ax.plot(scaled_data[male_mask == False][:, 0], scaled_data[male_mask == False][:, 1], 'k.', markersize=2, c="red")
+    ax.plot(scaled_data[male_mask == False][:, 0], scaled_data[male_mask == False][:, 1], '+', markersize=2, c="red")
 
     # Plot the centroids.
-    centroids = model.cluster_centers_
-    plt.scatter(centroids[:, 0], centroids[:, 1], marker="x", s=169, linewidths=3,
-                color="w", zorder=10)
+    # centroids = model.cluster_centers_
+    # plt.scatter(centroids[:, 0], centroids[:, 1], marker="x", s=169, linewidths=3,
+    #             color="w", zorder=10)
 
     # Save chart
     fig.savefig(os.path.join(results_dir, f"chart.png"))
     fig.savefig(os.path.join(results_dir, f"chart.eps"))
+
+    def calc_metrics(cluster_ids: pd.Series, real_attribute_labels: pd.Series):
+        metrics = {
+            "accuracy": accuracy_score(real_attribute_labels, cluster_ids),
+            "balanced_accuracy": balanced_accuracy_score(real_attribute_labels, cluster_ids),
+            "precision": precision_score(real_attribute_labels, cluster_ids),
+            "recall": recall_score(real_attribute_labels, cluster_ids),
+            "f1": f1_score(real_attribute_labels, cluster_ids)
+        }
+
+        metrics = {m: float(metrics[m]) for m in metrics}
+
+        return metrics
+
+    cluster_0_is_att_0_metrics = calc_metrics(full_data["cluster_id"], full_data["true_attribute"])
+
+    opposite_cluster_ids = (full_data["cluster_id"] == False).astype(int)
+    cluster_1_is_att_0_metrics = calc_metrics(opposite_cluster_ids, full_data["true_attribute"])
+
+    yaml = YAML(typ="safe")
+    with open(os.path.join(results_dir, "cluster_0_is_att_0.yaml"), "w") as outfile:
+        yaml.dump(cluster_0_is_att_0_metrics, outfile)
+
+    with open(os.path.join(results_dir, "cluster_1_is_att_0.yaml"), "w") as outfile:
+        yaml.dump(cluster_1_is_att_0_metrics, outfile)
 
 
 def visualise(
@@ -235,7 +263,7 @@ def visualise(
         idxs = rng.integers(0, len(all_attributes), size=10000)
         all_embeddings = all_embeddings[idxs]
         all_attributes = all_attributes[idxs]
- 
+
     tsne = TSNE(n_components=2, perplexity=perplexity, n_iter=5000, random_state=42, verbose=1)
     reduced_embeddings = tsne.fit_transform(all_embeddings)
 
