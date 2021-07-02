@@ -22,6 +22,9 @@ def main(
 ):
     experiments_per_lambda = find_lambda_experiments(root_experiment_path)
 
+    if not experiments_per_lambda:
+        raise ValueError
+
     # Construct the datamodules.
     if is_fullbody:
         datamodules = [
