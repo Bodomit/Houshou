@@ -30,13 +30,13 @@ def main(
         ]
     else:
         datamodules = [
-            CelebA(batch_size, ["Male"], buffer_size=None),
             VGGFace2(batch_size, ["Male"], buffer_size=None),
+            CelebA(batch_size, ["Male"], buffer_size=None),
         ]
 
     yaml = YAML(typ="safe")
 
-    root_dir = os.path.join(root_experiment_path, "attacker_aem_results")
+    root_dir = os.path.join(root_experiment_path, "attacker_aem_results", f"epochs_{n_epochs}")
 
     for train_module in datamodules:
 
@@ -56,7 +56,7 @@ def main(
         trainer = pl.Trainer(
             logger=loggers,
             max_epochs=n_epochs,
-            default_root_dir=root_dir,
+            default_root_dir=root_dir_train,
             gpus=1,
             auto_select_gpus=True,
             benchmark=True,
@@ -77,12 +77,12 @@ def main(
             )
             os.makedirs(os.path.dirname(root_dir_test), exist_ok=True)
 
-            for lamda_value, (tester_class, feature_model_checkpoint_path) in experiments_per_lambda.items():
+            for lambda_value, (tester_class, feature_model_checkpoint_path) in experiments_per_lambda.items():
 
-                results_dir = os.path.join(root_dir_test, lamda_value)
+                results_dir = os.path.join(root_dir_test)
                 os.makedirs(results_dir, exist_ok=True)
 
-                print("Lambda: ", lamda_value)
+                print("Lambda: ", lambda_value)
                 print("Checkpoint Path: ", feature_model_checkpoint_path)
                 print("Results Path: ", results_dir)
 
@@ -110,7 +110,7 @@ def main(
                     fast_dev_run=is_fast_dev_run)
 
                 results = tester.test(test_model, datamodule=test_module)
-                with open(os.path.join(root_dir_test, "results.yaml"), "w") as outfile:
+                with open(os.path.join(results_dir, f"results_{lambda_value}.yaml"), "w") as outfile:
                     yaml.dump(results[0], outfile)
 
         del trainer
