@@ -37,7 +37,7 @@ pl.seed_everything(42, workers=True)
 HOUSHOU_DATASET = Union[VGGFace2Dataset, CelebADataset, Market1501Dataset]
 
 
-def main(experiment_path: str, batch_size: int, is_debug: bool, is_fullbody: bool):
+def main(experiment_path: str, batch_size: int, is_debug: bool, is_fullbody: bool, cluster_only: bool):
 
     trainer_class = get_model_class_from_config(experiment_path)
     feature_model_checkpoint_path = find_last_epoch_path(experiment_path)
@@ -94,7 +94,8 @@ def main(experiment_path: str, batch_size: int, is_debug: bool, is_fullbody: boo
             feature_model,
             device)
 
-        continue
+        if cluster_only:
+            continue
 
         visualise(
             experiment_path,
@@ -408,5 +409,6 @@ if __name__ == "__main__":
     parser.add_argument("--batch-size", type=int, default=512)
     parser.add_argument("--debug", action="store_true")
     parser.add_argument("--fullbody", action="store_true")
+    parser.add_argument("--cluster-only", action="store_true")
     args = parser.parse_args()
-    main(args.experiment_path, args.batch_size, args.debug, args.fullbody)
+    main(args.experiment_path, args.batch_size, args.debug, args.fullbody, args.cluster_only)
