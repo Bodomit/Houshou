@@ -72,6 +72,9 @@ def main(
 
         # Test each data module.
         for test_module in datamodules:
+            
+            print(train_module, test_module)
+
             root_dir_test = os.path.join(
                 root_dir_train, f"{os.path.basename(test_module.data_dir)}"
             )
@@ -113,8 +116,8 @@ def main(
                 with open(os.path.join(results_dir, f"results_{lambda_value}.yaml"), "w") as outfile:
                     yaml.dump(results[0], outfile)
 
-        del trainer
-        del aem_task
+                del tester
+                del test_model
 
 
 def find_lambda_experiments(root_experiment_path: str) -> Dict[str, Tuple[Type, str]]:
