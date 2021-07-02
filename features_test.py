@@ -28,7 +28,8 @@ from houshou.data.vggface2 import VGGFace2Dataset
 from houshou.metrics import CVThresholdingVerifier, ReidentificationTester
 from houshou.models import FeatureModel
 from houshou.systems import MultitaskTrainer
-from houshou.utils import (find_last_epoch_path, get_model_class_from_config,
+from houshou.utils import (backwards_compatible_load, find_last_epoch_path,
+                           get_model_class_from_config,
                            save_cv_verification_results)
 
 pl.seed_everything(42, workers=True)
@@ -282,42 +283,6 @@ def visualise(
     chart = sns.lmplot(data=df.rename(columns=lambda x: str(x)), x=columns[0], y=columns[1], hue=columns[2], markers=["x", "+"], fit_reg=False, scatter_kws={"s": 10}, legend=False, palette=["red", "blue"])
     chart.savefig(os.path.join(results_dir, f"TSNE_p{perplexity}.png"))
     chart.savefig(os.path.join(results_dir, f"TSNE_p{perplexity}.svg"))
-
-
-def backwards_compatible_load(
-        feature_model_checkpoint_path: str,
-        trainer_class: Type[MultitaskTrainer]) -> torch.nn.Module:
-
-    old_checkpoint = torch.load(feature_model_checkpoint_path)
-    old_state_dict = old_checkpoint['state_dict']
-
-    hyper_parameters = old_checkpoint["hyper_parameters"]
-    hyper_parameters["verifier_args"] = None
-
-    new_state_dict = OrderedDict({k.replace(".resnet.", ".feature_model."): v
-                                  for k, v in old_state_dict.items()})
-
-    # Due to me being dumb, the weights are referenced twice in the same model...
-    # Both the old and new mappings must be present.
-    combined = OrderedDict(new_state_dict | old_state_dict)
-
-    try:
-        new_model = trainer_class(**hyper_parameters)
-    except TypeError:
-        # Hack
-        if "shm_uniformkldivergence" in feature_model_checkpoint_path:
-            hyper_parameters["loss_a"] = "UNIFORM_KLDIVERGENCE"
-            hyper_parameters["loss_f"] = "SEMIHARD_MINED_TRIPLETS"
-            hyper_parameters["weight_attributes"] = False
-            hyper_parameters["classification_training_scenario"] = False
-            hyper_parameters["use_short_attribute_branch"] = True
-            new_model = trainer_class(**hyper_parameters)
-        else:
-            raise
-
-    new_model.load_state_dict(combined)
-
-    return new_model
 
 
 def reid_scenario(

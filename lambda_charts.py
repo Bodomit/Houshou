@@ -14,6 +14,8 @@ import tqdm
 from ruyaml import YAML
 from sklearn.metrics import auc
 
+from houshou.utils import get_lambdas, sort_lambdas
+
 TEST_SUBSETS = {
     "faces": ["vggface2_MTCNN", "CelebA_MTCNN"],
     "fullbody": ["Market-1501", "RAP2"],
@@ -364,6 +366,7 @@ def aggregate_reid_metrics(
         os.path.join(output_directory, "feature_tests", "reid", test_set, f"reid_{n_classes}.csv")
     )
 
+
 def aggregate_verification_metrics(
     input_directory: str,
     test_set: str,
@@ -542,29 +545,11 @@ def get_mean_roc(split_rocs: SPLIT_ROCS) -> ROC:
     return mean_fpr, mean_tpr, mean_auc
 
 
-def get_lambdas(input_directory: str) -> List[str]:
-    pattern = os.path.join(input_directory, "*")
-    lambda_paths = glob.glob(pattern)
-    lambda_values: List[str] = []
-    for bn in (os.path.basename(p) for p in lambda_paths):
-        try:
-            float(bn)
-            lambda_values.append(bn)
-        except ValueError:
-            continue
-    return lambda_values
-
-
 def read_rocs(roc_path: str) -> SPLIT_ROCS:
     with open(roc_path, "rb") as infile:
         rocs = pickle.load(infile)
 
     return rocs
-
-
-def sort_lambdas(lambda_values: List[str]):
-    sorted_lambdas = list(sorted(lambda_values, key=lambda x: float(x)))
-    return sorted_lambdas
 
 
 if __name__ == "__main__":

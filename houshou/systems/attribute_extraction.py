@@ -1,3 +1,5 @@
+from typing import Optional
+
 import pytorch_lightning as pl
 import torch
 import torch.nn.functional as F
@@ -10,16 +12,22 @@ from torchmetrics.functional import stat_scores
 
 class AttributeExtractionTask(pl.LightningModule):
     def __init__(
-        self, feature_model: FeatureModel, learning_rate: float, n_outputs=2
+        self,
+        feature_model: Optional[FeatureModel],
+        attribute_model: Optional[AttributeExtractionModel],
+        learning_rate: float,
+        n_outputs: int = 2,
+        freeze_feature_model: bool = True
     ) -> None:
         super().__init__()
-        self.feature_model = feature_model
+        self.feature_model = feature_model if feature_model else FeatureModel()
+        self.attribute_model = attribute_model if attribute_model else AttributeExtractionModel(n_outputs=n_outputs)
         self.learning_rate = learning_rate
         self.n_outputs = n_outputs
-        self.attribute_model = AttributeExtractionModel(n_outputs=n_outputs)
 
         # Freeze the feature model.
-        self.feature_model.freeze()
+        if freeze_feature_model:
+            self.feature_model.freeze()
 
         # Get the metrics.
         metrics = MetricCollection(
