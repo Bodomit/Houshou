@@ -191,10 +191,13 @@ def cluster(
 
     # Plot Male sample.
     male_mask = full_data["true_attribute"] == 1
-    ax.plot(scaled_data[male_mask][:, 0], scaled_data[male_mask][:, 1], 'x', markersize=2, c="blue")
+    ax.plot(scaled_data[male_mask][:, 0], scaled_data[male_mask][:, 1], 'x', markersize=2, c="blue", label="Male")
 
     # Plot female.
-    ax.plot(scaled_data[male_mask == False][:, 0], scaled_data[male_mask == False][:, 1], '+', markersize=2, c="red")
+    ax.plot(scaled_data[male_mask == False][:, 0], scaled_data[male_mask == False][:, 1], '+', markersize=2, c="red", label="Female")
+
+    # Add the legend.
+    ax.legend()
 
     # Plot the centroids.
     # centroids = model.cluster_centers_
