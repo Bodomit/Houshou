@@ -17,11 +17,20 @@ class AttributeExtractionTask(pl.LightningModule):
         attribute_model: Optional[AttributeExtractionModel],
         learning_rate: float,
         n_outputs: int = 2,
-        freeze_feature_model: bool = True
+        freeze_feature_model: bool = True,
     ) -> None:
         super().__init__()
         self.feature_model = feature_model if feature_model else FeatureModel()
-        self.attribute_model = attribute_model if attribute_model else AttributeExtractionModel(n_outputs=n_outputs)
+
+        raise NotImplementedError("Not working with resnet101.")
+
+        self.attribute_model = (
+            attribute_model
+            if attribute_model
+            else AttributeExtractionModel(
+                n_inputs=n_feature_outputs, n_outputs=n_outputs
+            )
+        )
         self.learning_rate = learning_rate
         self.n_outputs = n_outputs
 

@@ -66,6 +66,8 @@ model:
     classification_training_scenario: false
     n_classes: null
     use_pretrained: false
+    use_resnet18: false
+    use_resnet101: false
     use_extra_fc_layers: false
     use_short_attribute_branch: true
     verifier_args:
