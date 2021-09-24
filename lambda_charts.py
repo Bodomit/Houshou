@@ -4,6 +4,7 @@ import itertools
 import os
 import pickle
 import re
+from collections import defaultdict
 from typing import Any, Dict, List, Set, Tuple
 
 import matplotlib.pyplot as plt
@@ -251,6 +252,13 @@ def aggregate_feature_tests(
             print("Test Set: ", test_set)
             print("N Classes: ", n_class)
 
+            aggregate_clustering(
+                input_directory,
+                test_set,
+                lambda_values,
+                output_directory
+            )
+
             aggregate_reid_metrics(
                     input_directory,
                     test_set,
@@ -318,6 +326,58 @@ def plot_aucs_per_lambda_vs_n_classes(
     fig.savefig(output_path + ".eps")
     fig.savefig(output_path + ".png")
     plt.close()
+
+
+def aggregate_clustering(
+    input_directory: str,
+    test_set: str,
+    lambda_values: List[str],
+    output_directory: str
+):
+    # Get the metrics for each lambda.
+    metrics_for_lambda: Dict[str, List[Dict]] = defaultdict(list)
+    for lambda_value in tqdm.tqdm(
+        sorted(lambda_values),
+        desc=f"Loading Reid Metrics",
+        ascii=True,
+        dynamic_ncols=True,
+    ):
+        metric_path = os.path.join(
+            input_directory,
+            str(lambda_value),
+            "feature_tests",
+            "clustering",
+            test_set,
+            f"cluster_*_is_att_0.yaml",
+        )
+
+        metric_paths = sorted(glob.glob(metric_path))
+
+        yaml = YAML(typ="safe")
+        for path in metric_paths:
+            try:
+                with open(path, "r") as infile:
+                    lambda_metrics = yaml.load(infile)
+                metrics_for_lambda[lambda_value].append(lambda_metrics)
+            except FileNotFoundError:
+                continue
+
+    # Sort the lambda metric lists by which has the greatest balanced accuracy.
+    for lambda_value in metrics_for_lambda:
+        metrics_for_lambda[lambda_value] = sorted(metrics_for_lambda[lambda_value], key=lambda x: x["balanced_accuracy"], reverse=True)
+
+    # Combine the metrics together.
+    sorted_lambdas = sort_lambdas(lambda_values)
+    df_rows: List[pd.Series] = []
+    for lambda_value in sorted_lambdas:
+        df_rows.append(metrics_for_lambda[lambda_value][0] | {"lambda": lambda_value})
+    df = pd.DataFrame.from_records(df_rows, index="lambda")
+
+    # Save the full metrics.
+    os.makedirs(os.path.join(output_directory, "feature_tests", "clustering", test_set), exist_ok=True)
+    df.to_csv(
+        os.path.join(output_directory, "feature_tests", "clustering", test_set, "results.csv")
+    )
 
 
 def aggregate_reid_metrics(

@@ -12,8 +12,7 @@ import torch
 from ruyaml import YAML
 
 from houshou.common import ROCCurve
-from houshou.systems import (Alvi2019, MultitaskTrainer,
-                             TwoStageMultitaskTrainer)
+from houshou.systems import Alvi2019, MultitaskTrainer, TwoStageMultitaskTrainer
 
 
 def parse_root_results_directory_argument(args: List[str]):
@@ -47,9 +46,7 @@ def find_last_epoch_path(path: str) -> str:
             continue
 
     sorted_paths_with_epochs_steps = sorted(
-        paths_with_epochs_steps,
-        key=lambda x: (x[1], x[2]),
-        reverse=True,
+        paths_with_epochs_steps, key=lambda x: (x[1], x[2]), reverse=True,
     )
 
     return sorted_paths_with_epochs_steps[0][0]
@@ -96,9 +93,7 @@ def get_model_class_from_config(path: str) -> Type[MultitaskTrainer]:
 
 
 def save_cv_verification_results(
-    metrics_rocs: Tuple[pd.DataFrame, List[ROCCurve]],
-    val_results_path: str,
-    suffix="",
+    metrics_rocs: Tuple[pd.DataFrame, List[ROCCurve]], val_results_path: str, suffix="",
 ):
     fn = partial(os.path.join, val_results_path)
 
@@ -128,17 +123,18 @@ def sort_lambdas(lambda_values: List[str]):
 
 
 def backwards_compatible_load(
-        feature_model_checkpoint_path: str,
-        trainer_class: Type[MultitaskTrainer]) -> torch.nn.Module:
+    feature_model_checkpoint_path: str, trainer_class: Type[MultitaskTrainer]
+) -> torch.nn.Module:
 
     old_checkpoint = torch.load(feature_model_checkpoint_path)
-    old_state_dict = old_checkpoint['state_dict']
+    old_state_dict = old_checkpoint["state_dict"]
 
     hyper_parameters = old_checkpoint["hyper_parameters"]
     hyper_parameters["verifier_args"] = None
 
-    new_state_dict = OrderedDict({k.replace(".resnet.", ".feature_model."): v
-                                  for k, v in old_state_dict.items()})
+    new_state_dict = OrderedDict(
+        {k.replace(".resnet.", ".feature_model."): v for k, v in old_state_dict.items()}
+    )
 
     # Due to me being dumb, the weights are referenced twice in the same model...
     # Both the old and new mappings must be present.
@@ -161,3 +157,15 @@ def backwards_compatible_load(
     new_model.load_state_dict(combined)
 
     return new_model
+
+
+def save_cv_verification_results(
+    metrics_rocs: Tuple[pd.DataFrame, List[ROCCurve]], val_results_path: str, suffix="",
+):
+    fn = partial(os.path.join, val_results_path)
+
+    metrics, rocs = metrics_rocs
+    metrics.to_csv(fn(f"verification{suffix}.csv"))
+
+    with open(fn(f"roc_curves{suffix}.pickle"), "wb") as outfile:
+        pickle.dump(rocs, outfile)
