@@ -16,7 +16,7 @@ model:
     use_extra_fc_layers: false
     use_short_attribute_branch: true
     verifier_args:
-      batch_size: 512
+      batch_size: 128
       debug: false
       seed: 42
       n_splits: 10
@@ -24,7 +24,7 @@ data:
   class_path: houshou.data.VGGFace2
   init_args:
     data_dir: vggface2_MTCNN
-    batch_size: 512
+    batch_size: 128
     buffer_size: 5000
     attribute:
       - Male

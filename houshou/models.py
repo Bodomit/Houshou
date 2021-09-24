@@ -80,14 +80,16 @@ class ClassificationModel(FeatureModel):
 
 
 class AttributeExtractionModel(pl.LightningModule):
-    def __init__(self, n_outputs=2, use_short_attribute_branch=False, **kwargs):
+    def __init__(
+        self, n_inputs=512, n_outputs=2, use_short_attribute_branch=False, **kwargs
+    ):
         super().__init__()
         super().save_hyperparameters()
         if use_short_attribute_branch:
             self.full_model = nn.Sequential(
                 nn.Flatten(),
                 nn.LeakyReLU(),
-                nn.Linear(512, 128),
+                nn.Linear(n_inputs, 128),
                 nn.LeakyReLU(),
                 nn.Linear(128, 32),
                 nn.LeakyReLU(),
@@ -97,7 +99,7 @@ class AttributeExtractionModel(pl.LightningModule):
             self.full_model = nn.Sequential(
                 nn.Flatten(),
                 nn.LeakyReLU(),
-                nn.Linear(512, 128),
+                nn.Linear(n_inputs, 128),
                 nn.LeakyReLU(),
                 nn.Linear(128, 128),
                 nn.LeakyReLU(),
@@ -155,13 +157,19 @@ class MultiTaskTrainingModel(pl.LightningModule):
             **kwargs
         )
 
+        if use_resnet101:
+            n_feature_outputs = 2048
+        else:
+            n_feature_outputs = 512
+
         if attribute_model_path:
             self.attribute_model = AttributeExtractionModel.load_from_checkpoint(
-                attribute_model_path
+                attribute_model_path, n_inputs=n_feature_outputs
             )
         else:
             self.attribute_model = AttributeExtractionModel(
-                use_short_attribute_branch=use_short_attribute_branch, **kwargs
+                use_short_attribute_branch=use_short_attribute_branch,
+                n_inputs=n_feature_outputs,
             )
 
         self.reverse_attribute_gradient = reverse_attribute_gradient
