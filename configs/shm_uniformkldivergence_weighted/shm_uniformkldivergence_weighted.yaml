@@ -11,6 +11,8 @@ model:
     reverse_attribute_gradient: false
     weight_attributes: true
     use_pretrained: false
+    use_resnet18: false
+    use_resnet101: true
     use_extra_fc_layers: false
     use_short_attribute_branch: true
     verifier_args:

@@ -7,26 +7,55 @@ from facenet_pytorch import InceptionResnetV1
 
 
 class FeatureModel(pl.LightningModule):
-    def __init__(self, dropout_prob: float = 0.6, use_resnet18=False, use_pretrained=False, use_extra_fc_layers=False, **kwargs):
+    def __init__(
+        self,
+        dropout_prob: float = 0.6,
+        use_resnet18=False,
+        use_resnet101=False,
+        use_pretrained=False,
+        use_extra_fc_layers=False,
+        **kwargs
+    ):
         super().__init__()
         self.use_pretrained = use_pretrained
         self.save_hyperparameters()
+
+        assert not (use_resnet18 and use_resnet101)
+
         if use_resnet18:
             assert use_pretrained is False
             assert use_extra_fc_layers is False
-            resnet = torch.hub.load('pytorch/vision:v0.9.0', 'resnet18', pretrained=False)
-            self.resnet = nn.Sequential(*(list(resnet.children())[:-1]), nn.Dropout(p=dropout_prob), nn.Flatten())
+            resnet = torch.hub.load(
+                "pytorch/vision:v0.9.0", "resnet18", pretrained=False
+            )
+            self.resnet = nn.Sequential(
+                *(list(resnet.children())[:-1]),
+                nn.Dropout(p=dropout_prob),
+                nn.Flatten()
+            )
+        elif use_resnet101:
+            assert use_pretrained is False
+            assert use_extra_fc_layers is False
+            resnet = torch.hub.load(
+                "pytorch/vision:v0.9.0", "resnet101", pretrained=False
+            )
+            self.resnet = nn.Sequential(
+                *(list(resnet.children())[:-1]),
+                nn.Dropout(p=dropout_prob),
+                nn.Flatten()
+            )
         else:
             self.resnet = InceptionResnetV1(
                 pretrained="vggface2" if use_pretrained else None,
                 classify=False,
                 num_classes=None,
-                dropout_prob=dropout_prob
+                dropout_prob=dropout_prob,
             )
 
         if use_extra_fc_layers:
             self.extra_fc = nn.Sequential(
-                nn.Linear(512, 512), nn.Linear(512, 512), nn.Linear(512, 512))
+                nn.Linear(512, 512), nn.Linear(512, 512), nn.Linear(512, 512)
+            )
             self.feature_model = nn.Sequential(self.resnet, self.extra_fc)
         else:
             self.feature_model = self.resnet
@@ -62,7 +91,8 @@ class AttributeExtractionModel(pl.LightningModule):
                 nn.LeakyReLU(),
                 nn.Linear(128, 32),
                 nn.LeakyReLU(),
-                nn.Linear(32, n_outputs))
+                nn.Linear(32, n_outputs),
+            )
         else:
             self.full_model = nn.Sequential(
                 nn.Flatten(),
@@ -100,6 +130,7 @@ class MultiTaskTrainingModel(pl.LightningModule):
         reverse_attribute_gradient: bool = False,
         classification_training_scenario: bool = False,
         use_resnet18: bool = False,
+        use_resnet101: bool = False,
         use_short_attribute_branch: bool = False,
         use_pretrained: bool = False,
         use_extra_fc_layers: bool = False,
@@ -117,6 +148,7 @@ class MultiTaskTrainingModel(pl.LightningModule):
             model_type,
             feature_model_path,
             use_resnet18=use_resnet18,
+            use_resnet101=use_resnet101,
             use_short_attribute_branch=use_short_attribute_branch,
             use_pretrained=use_pretrained,
             use_extra_fc_layers=use_extra_fc_layers,
@@ -129,8 +161,8 @@ class MultiTaskTrainingModel(pl.LightningModule):
             )
         else:
             self.attribute_model = AttributeExtractionModel(
-                use_short_attribute_branch=use_short_attribute_branch,
-                **kwargs)
+                use_short_attribute_branch=use_short_attribute_branch, **kwargs
+            )
 
         self.reverse_attribute_gradient = reverse_attribute_gradient
 

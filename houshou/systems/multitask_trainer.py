@@ -9,8 +9,7 @@ from houshou.losses import LOSS, get_multitask_loss
 from houshou.metrics import BalancedAccuracy, CVThresholdingVerifier
 from houshou.models import MultiTaskTrainingModel
 from torch.utils.data.dataloader import DataLoader
-from torchmetrics.classification import (F1, Accuracy, ConfusionMatrix,
-                                         Precision, Recall)
+from torchmetrics.classification import F1, Accuracy, ConfusionMatrix, Precision, Recall
 from torchmetrics.collections import MetricCollection
 
 
@@ -26,6 +25,7 @@ class MultitaskTrainer(pl.LightningModule):
         classification_training_scenario: bool,
         n_classes: Optional[int] = None,
         use_resnet18: bool = False,
+        use_resnet101: bool = False,
         use_short_attribute_branch: bool = False,
         reverse_attribute_gradient: bool = False,
         use_pretrained: bool = False,
@@ -41,6 +41,7 @@ class MultitaskTrainer(pl.LightningModule):
             classification_training_scenario=classification_training_scenario,
             n_classes=n_classes,
             use_resnet18=use_resnet18,
+            use_resnet101=use_resnet101,
             use_short_attribute_branch=use_short_attribute_branch,
             reverse_attribute_gradient=reverse_attribute_gradient,
             use_pretrained=use_pretrained,
