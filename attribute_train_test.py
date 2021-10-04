@@ -38,7 +38,7 @@ def main(
     if is_fullbody:
         datamodules = [
             Market1501(batch_size, ["gender"], buffer_size=None),
-            RAP2(batch_size, ["Male"], buffer_size=None)
+            RAP2(batch_size, ["Male"], buffer_size=None),
         ]
     else:
         datamodules = [
@@ -62,7 +62,9 @@ def main(
         ]
 
         # Train the attribute extraction model.
-        aem_task = AttributeExtractionTask(feature_model, 0.001)
+        aem_task = AttributeExtractionTask(
+            feature_model, None, 0.001, freeze_feature_model=True
+        )
         trainer = pl.Trainer(
             logger=loggers,
             max_epochs=10,
