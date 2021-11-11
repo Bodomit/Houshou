@@ -160,19 +160,13 @@ class MultiTaskTrainingModel(pl.LightningModule):
             **kwargs
         )
 
-        if use_resnet101:
-            n_feature_outputs = 2048
-        else:
-            n_feature_outputs = 512
-
         if attribute_model_path:
             self.attribute_model = AttributeExtractionModel.load_from_checkpoint(
-                attribute_model_path, n_inputs=n_feature_outputs
+                attribute_model_path
             )
         else:
             self.attribute_model = AttributeExtractionModel(
                 use_short_attribute_branch=use_short_attribute_branch,
-                n_inputs=n_feature_outputs,
             )
 
         self.reverse_attribute_gradient = reverse_attribute_gradient
