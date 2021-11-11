@@ -22,14 +22,10 @@ class AttributeExtractionTask(pl.LightningModule):
         super().__init__()
         self.feature_model = feature_model if feature_model else FeatureModel()
 
-        raise NotImplementedError("Not working with resnet101.")
-
         self.attribute_model = (
             attribute_model
             if attribute_model
-            else AttributeExtractionModel(
-                n_inputs=n_feature_outputs, n_outputs=n_outputs
-            )
+            else AttributeExtractionModel(n_outputs=n_outputs)
         )
         self.learning_rate = learning_rate
         self.n_outputs = n_outputs

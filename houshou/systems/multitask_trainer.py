@@ -29,7 +29,6 @@ class MultitaskTrainer(pl.LightningModule):
         use_short_attribute_branch: bool = False,
         reverse_attribute_gradient: bool = False,
         use_pretrained: bool = False,
-        use_extra_fc_layers: bool = False,
         **kwargs,
     ) -> None:
         super().__init__()
@@ -45,7 +44,6 @@ class MultitaskTrainer(pl.LightningModule):
             use_short_attribute_branch=use_short_attribute_branch,
             reverse_attribute_gradient=reverse_attribute_gradient,
             use_pretrained=use_pretrained,
-            use_extra_fc_layers=use_extra_fc_layers,
             **kwargs,
         )
         self.lambda_value = lambda_value
