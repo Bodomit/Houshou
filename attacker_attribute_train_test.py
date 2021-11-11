@@ -8,7 +8,7 @@ from ruyaml import YAML
 
 from houshou.data import CelebA, Market1501, VGGFace2
 from houshou.data.rap2 import RAP2
-from houshou.models import FeatureModel
+from houshou.models import AttributeExtractionModel, FeatureModel
 from houshou.systems import AttributeExtractionTask
 from houshou.utils import (backwards_compatible_load, find_last_epoch_path,
                            get_lambdas, get_model_class_from_config,
@@ -18,7 +18,11 @@ pl.seed_everything(42, workers=True)
 
 
 def main(
-    root_experiment_path: str, batch_size: int, is_fast_dev_run: bool, is_fullbody: bool, n_epochs: int
+    root_experiment_path: str,
+    batch_size: int,
+    is_fast_dev_run: bool,
+    is_fullbody: bool,
+    n_epochs: int,
 ):
     experiments_per_lambda = find_lambda_experiments(root_experiment_path)
 
@@ -29,7 +33,7 @@ def main(
     if is_fullbody:
         datamodules = [
             Market1501(batch_size, ["gender"], buffer_size=None),
-            RAP2(batch_size, ["Male"], buffer_size=None)
+            RAP2(batch_size, ["Male"], buffer_size=None),
         ]
     else:
         datamodules = [
@@ -39,14 +43,14 @@ def main(
 
     yaml = YAML(typ="safe")
 
-    root_dir = os.path.join(root_experiment_path, "attacker_aem_results", f"epochs_{n_epochs}")
+    root_dir = os.path.join(
+        root_experiment_path, "attacker_aem_results", f"epochs_{n_epochs}"
+    )
 
     for train_module in datamodules:
 
         # Get directory for this test.
-        root_dir_train = os.path.join(
-            root_dir, os.path.basename(train_module.data_dir)
-        )
+        root_dir_train = os.path.join(root_dir, os.path.basename(train_module.data_dir))
 
         # Constuct loggers.
         loggers = [
@@ -68,6 +72,7 @@ def main(
         trainer.fit(aem_task, train_module)
 
         aem_model = aem_task.attribute_model
+        assert isinstance(aem_model, AttributeExtractionModel)
         aem_model.freeze()
 
         del aem_task
@@ -75,7 +80,7 @@ def main(
 
         # Test each data module.
         for test_module in datamodules:
-            
+
             print(train_module, test_module)
 
             root_dir_test = os.path.join(
@@ -83,7 +88,10 @@ def main(
             )
             os.makedirs(os.path.dirname(root_dir_test), exist_ok=True)
 
-            for lambda_value, (tester_class, feature_model_checkpoint_path) in experiments_per_lambda.items():
+            for (
+                lambda_value,
+                (tester_class, feature_model_checkpoint_path),
+            ) in experiments_per_lambda.items():
 
                 results_dir = os.path.join(root_dir_test)
                 os.makedirs(results_dir, exist_ok=True)
@@ -99,7 +107,8 @@ def main(
                     )
                 except (RuntimeError, TypeError):
                     multitask_trainer = backwards_compatible_load(
-                        feature_model_checkpoint_path, tester_class)
+                        feature_model_checkpoint_path, tester_class
+                    )
 
                 assert isinstance(multitask_trainer, tester_class)
                 feature_model = multitask_trainer.model.feature_model  # type: ignore
@@ -113,10 +122,13 @@ def main(
                     gpus=1,
                     auto_select_gpus=True,
                     benchmark=True,
-                    fast_dev_run=is_fast_dev_run)
+                    fast_dev_run=is_fast_dev_run,
+                )
 
                 results = tester.test(test_model, datamodule=test_module)
-                with open(os.path.join(results_dir, f"results_{lambda_value}.yaml"), "w") as outfile:
+                with open(
+                    os.path.join(results_dir, f"results_{lambda_value}.yaml"), "w"
+                ) as outfile:
                     yaml.dump(results[0], outfile)
 
                 del tester
@@ -133,7 +145,10 @@ def find_lambda_experiments(root_experiment_path: str) -> Dict[str, Tuple[Type, 
         experiment_path = os.path.join(root_experiment_path, lambda_value)
         trainer_class = get_model_class_from_config(experiment_path)
         feature_model_checkpoint_path = find_last_epoch_path(experiment_path)
-        experiments_for_lambdas[lambda_value] = (trainer_class, feature_model_checkpoint_path)
+        experiments_for_lambdas[lambda_value] = (
+            trainer_class,
+            feature_model_checkpoint_path,
+        )
 
     return experiments_for_lambdas
 
@@ -146,4 +161,6 @@ if __name__ == "__main__":
     parser.add_argument("--fullbody", action="store_true")
     parser.add_argument("--n-epochs", type=int, default=30)
     args = parser.parse_args()
-    main(args.experiment_path, args.batch_size, args.debug, args.fullbody, args.n_epochs)
+    main(
+        args.experiment_path, args.batch_size, args.debug, args.fullbody, args.n_epochs
+    )
