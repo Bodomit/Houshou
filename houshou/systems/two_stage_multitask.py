@@ -23,7 +23,6 @@ class TwoStageMultitaskTrainer(MultitaskTrainer):
         use_short_attribute_branch: bool = False,
         reverse_attribute_gradient: bool = False,
         use_pretrained: bool = False,
-        use_extra_fc_layers: bool = False,
         **kwargs
     ) -> None:
         super().__init__(

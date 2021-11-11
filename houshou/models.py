@@ -14,7 +14,6 @@ class FeatureModel(pl.LightningModule):
         use_resnet18=False,
         use_resnet101=False,
         use_pretrained=False,
-        use_extra_fc_layers=False,
         **kwargs
     ):
         super().__init__()
@@ -141,7 +140,6 @@ class MultiTaskTrainingModel(pl.LightningModule):
         use_resnet101: bool = False,
         use_short_attribute_branch: bool = False,
         use_pretrained: bool = False,
-        use_extra_fc_layers: bool = False,
         **kwargs
     ):
         super().__init__()
@@ -159,7 +157,6 @@ class MultiTaskTrainingModel(pl.LightningModule):
             use_resnet101=use_resnet101,
             use_short_attribute_branch=use_short_attribute_branch,
             use_pretrained=use_pretrained,
-            use_extra_fc_layers=use_extra_fc_layers,
             **kwargs
         )
 
