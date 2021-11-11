@@ -3,6 +3,8 @@ from pytorch_lightning.utilities.cli import LightningCLI
 from houshou.data import TripletsAttributeDataModule
 from houshou.systems import MultitaskTrainer
 
+import torch
+torch.multiprocessing.set_sharing_strategy('file_system')
 
 class CustomLightningCLI(LightningCLI):
     def add_arguments_to_parser(self, parser) -> None:
