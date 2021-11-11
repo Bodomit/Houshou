@@ -3,6 +3,7 @@ from typing import Optional, Type
 import pytorch_lightning as pl
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 from facenet_pytorch import InceptionResnetV1
 
 
@@ -21,47 +22,52 @@ class FeatureModel(pl.LightningModule):
         self.save_hyperparameters()
 
         assert not (use_resnet18 and use_resnet101)
+        self.resnet = None
 
-        if use_resnet18:
-            assert use_pretrained is False
-            assert use_extra_fc_layers is False
-            resnet = torch.hub.load(
-                "pytorch/vision:v0.9.0", "resnet18", pretrained=False
-            )
-            self.resnet = nn.Sequential(
-                *(list(resnet.children())[:-1]),
-                nn.Dropout(p=dropout_prob),
-                nn.Flatten()
-            )
-        elif use_resnet101:
-            assert use_pretrained is False
-            assert use_extra_fc_layers is False
-            resnet = torch.hub.load(
-                "pytorch/vision:v0.9.0", "resnet101", pretrained=False
-            )
-            self.resnet = nn.Sequential(
-                *(list(resnet.children())[:-1]),
-                nn.Dropout(p=dropout_prob),
-                nn.Flatten()
-            )
-        else:
-            self.resnet = InceptionResnetV1(
-                pretrained="vggface2" if use_pretrained else None,
+        if use_pretrained:
+            resnet = InceptionResnetV1(
+                pretrained="vggface2",
                 classify=False,
                 num_classes=None,
                 dropout_prob=dropout_prob,
             )
-
-        if use_extra_fc_layers:
-            self.extra_fc = nn.Sequential(
-                nn.Linear(512, 512), nn.Linear(512, 512), nn.Linear(512, 512)
+        elif use_resnet18:
+            assert use_pretrained is False
+            resnet = torch.hub.load(
+                "pytorch/vision:v0.9.0", "resnet18", pretrained=False
             )
-            self.feature_model = nn.Sequential(self.resnet, self.extra_fc)
+        elif use_resnet101:
+            assert use_pretrained is False
+            resnet = torch.hub.load(
+                "pytorch/vision:v0.9.0", "resnet101", pretrained=False
+            )
         else:
-            self.feature_model = self.resnet
+            assert use_pretrained is False
+            resnet = torch.hub.load(
+                "pytorch/vision:v0.9.0", "resnet50", pretrained=False
+            )
+
+        if use_pretrained:
+            self.resnet = resnet
+            self.needs_normalisation = False
+        else:
+            self.needs_normalisation = True
+            self.resnet = nn.Sequential(
+                *(list(resnet.children())[:-1]),
+                nn.Dropout(p=dropout_prob),
+                nn.Flatten(),
+                nn.Linear(2048, 512, bias=False),
+                nn.BatchNorm1d(512, eps=0.001, momentum=0.1, affine=True)
+            )
+
+        self.feature_model = self.resnet
 
     def forward(self, x):
-        return self.feature_model(x)
+        x = self.feature_model(x)
+        if self.needs_normalisation:
+            return F.normalize(x, p=2, dim=1)
+        else:
+            return x
 
 
 class ClassificationModel(FeatureModel):
